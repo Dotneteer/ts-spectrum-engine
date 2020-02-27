@@ -1,0 +1,155 @@
+:root {
+  --main-background-color: #181818;
+  --toolbar-background-color: #282828;
+  --overlay-background-color: #202020;
+  --emulator-status-background: #282828;
+  --emulator-status-color: white;
+  --text-button-color: #c0c0c0;
+  --text-button-disabled: #606060;
+  --text-button-hilited: cyan;
+}
+
+body {
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  background: var(--main-background-color);
+}
+
+a {
+  color: #00B7FF;
+}
+
+/* =========================================================================
+ * Menu and items
+/* ========================================================================= */
+h1 {
+  color: white;
+}
+
+.menu-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.obfucation-set {
+  color: white;
+  font-size: 20px;
+}
+
+/* =========================================================================
+ * Flexbox layout for the entire page
+/* ========================================================================= */
+.emulator-page {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  margin: 0 2px 2px 2px;
+}
+
+#emulator-column {
+  display: flex;
+  flex-direction: column;
+}
+
+#play-overlay {
+  position: relative;
+  height: 0;
+  left: 8px;
+  top: 8px;
+}
+
+#overlay-text {
+  display: none;
+  background-color: #202020;
+  color: cyan;
+  opacity: 0.8;
+  padding: 6px 10px 8px 8px;
+  border-radius: 4px;
+}
+
+#emulator-status {
+  padding: 8px;
+  background-color: var(--emulator-status-background);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 8pt;
+  color: var(--emulator-status-color);
+}
+
+/* =========================================================================
+ * ZX Spectrum Toolbar and buttons
+/* ========================================================================= */
+.toolbar {
+  padding: 2px 4px;
+  background: var(--toolbar-background-color);
+  display: flex;
+  height: 26px;
+}
+
+.emu-button {
+  padding: 4px 4px 2px 4px;
+  display: inline-block;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin: 0 2px;
+}
+
+.disabled-button {
+  padding: 4px 4px 2px 4px;
+  display: inline-block;
+  border: 1px solid transparent;
+  margin: 0 2px;
+  fill: #505050;
+  cursor: default;
+}
+
+.separator {
+  display: inline-block;
+  width: 4px;
+  height: 22px;
+  border-right: 2px solid #404040;
+  margin-top: 2px;
+  margin-right: 4px;
+  vertical-align: center;
+}
+
+.start-fill {
+  fill: green;
+}
+
+.stop-fill {
+  fill: red
+}
+
+.pause-fill {
+  fill: darkcyan;
+}
+
+.restart-fill {
+  fill: green;
+}
+
+.text-button {
+  padding: 3px 8px;
+  background-color: var(--emulator-status-background);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12pt;
+  color: var(--text-button-color);
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.text-button.disabled {
+  color: var(--text-button-disabled)
+}
+
+.text-button.hilited {
+  color: var(--text-button-hilited)
+}
