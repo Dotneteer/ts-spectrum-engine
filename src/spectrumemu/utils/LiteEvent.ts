@@ -1,5 +1,3 @@
-import { PortHandlerBase } from "../../spectrumemu/devices/ports/PortHandlerBase";
-
 /**
  * Defines the behavior of a light-weight event handler
  */
