@@ -237,6 +237,7 @@ export function z80CpuEngine(
     // 0x04: INC B
     () => {
       f = incOpFlags[b] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
       b = (b + 1) & 0xff;
       bc = (b << 8) | c;
     },
@@ -244,6 +245,7 @@ export function z80CpuEngine(
     // 0x05: DEC B
     () => {
       f = decOpFlags[b] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
       b = (b - 1) & 0xff;
       bc = (b << 8) | c;
     },
@@ -281,6 +283,8 @@ export function z80CpuEngine(
     // 0x09: ADD HL,BC
     () => {
       wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
       hl = aluAddHL(hl, bc);
       h = hl >> 8;
       l = hl & 0xff;
@@ -290,12 +294,14 @@ export function z80CpuEngine(
     // 0x0a: LD A,(BC)
     () => {
       wz = (bc + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
       a = memory.read(bc);
       tacts += 3;
       af = (a << 8) | f;
     },
 
-    // 0x0b: dec bc
+    // 0x0b: DEC BC
     () => {
       bc = (bc - 1) & 0xffff;
       tacts += 2;
@@ -306,14 +312,20 @@ export function z80CpuEngine(
     // 0x0c: INC C
     () => {
       f = incOpFlags[c] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
       c = (c + 1) & 0xff;
       bc = (b << 8) | c;
     },
 
-    // 0x0d: ???
-    () => {},
+    // 0x0d: DEC C
+    () => {
+      f = decOpFlags[c] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+      c = (c - 1) & 0xff;
+      bc = (b << 8) | c;
+    },
 
-    // 0x0e: LD E,N
+    // 0x0e: LD C,N
     () => {
       c = memory.read(pc);
       pc = (pc + 1) & 0xffff;
@@ -321,59 +333,223 @@ export function z80CpuEngine(
       bc = (b << 8) | c;
     },
 
-    // 0x0f: ???
-    () => {},
+    // 0x0f: RRCA
+    () => {
+      let rrcaVal = a;
+      let cf = ((rrcaVal & 0x01) !== 0 ? FlagsSetMask.C : 0) & 0xff;
+      if ((rrcaVal & 0x01) !== 0) {
+        rrcaVal = (rrcaVal >> 1) | 0x80;
+      } else {
+        rrcaVal >>= 1;
+      }
+      a = rrcaVal & 0xff;
+      f = cf | (f & FlagsSetMask.SZPV);
+      af = (a << 8) | f;
+    },
 
-    // 0x10: ???
-    () => {},
+    // 0x10: DJNZ
+    () => {
+      tacts++;
+      const dist = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      b = (b - 1) & 0xff;
+      bc = (b << 8) | c;
+      if (b === 0) {
+        return;
+      }
 
-    // 0x11: ???
-    () => {},
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      wz = pc = (pc + toSbyte(dist)) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+    },
 
-    // 0x12: ???
-    () => {},
+    // 0x11: LD DE,NN
+    () => {
+      // pc+1:3
+      e = memory.read(pc);
+      tacts += 3;
 
-    // 0x13: ???
-    () => {},
+      // pc+2:3
+      pc = (pc + 1) & 0xffff;
+      d = memory.read(pc);
+      pc = (pc + 1) & 0xffff;
+      de = (d << 8) | e;
+      tacts += 3;
+    },
 
-    // 0x14: ???
-    () => {},
+    // 0x12: LD (DE),A
+    () => {
+      // pc:3
+      memory.write(de, a);
+      wzh = a;
+      wz = (wzh << 8) | wzl;
+      tacts += 3;
+    },
 
-    // 0x15: ???
-    () => {},
+    // 0x13: INC DE
+    () => {
+      de = (de + 1) & 0xffff;
+      d = de >> 8;
+      e = de & 0xff;
+      tacts += 2;
+    },
 
-    // 0x16: ???
-    () => {},
+    // 0x14: INC D
+    () => {
+      f = incOpFlags[d] | (f & FlagsSetMask.C);
+      d = (d + 1) & 0xff;
+      de = (d << 8) | e;
+      af = (a << 8) | f;
+    },
 
-    // 0x17: ???
-    () => {},
+    // 0x15: DEC D
+    () => {
+      f = decOpFlags[d] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+      d = (d - 1) & 0xff;
+      de = (d << 8) | e;
+    },
 
-    // 0x18: ???
-    () => {},
+    // 0x16: LD D,N
+    () => {
+      d = memory.read(pc);
+      pc = (pc + 1) & 0xffff;
+      tacts += 3;
+      de = (d << 8) | e;
+    },
 
-    // 0x19: ???
-    () => {},
+    // 0x17: RLA
+    () => {
+      let rlaVal = a;
+      let newCF = (rlaVal & 0x80) !== 0 ? FlagsSetMask.C : 0;
+      rlaVal <<= 1;
+      if ((f & FlagsSetMask.C) !== 0) {
+        rlaVal |= 0x01;
+      }
+      a = rlaVal & 0xff;
+      f = newCF | (f & FlagsSetMask.SZPV);
+      af = (a << 8) | f;
+    },
 
-    // 0x1a: ???
-    () => {},
+    // 0x18: JR E
+    () => {
+      const dist = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1 + toSbyte(dist)) & 0xffff;
+      wz = pc;
+      wzh = wz << 8;
+      wzl = wz & 0xff;
+      tacts += 5;
+    },
 
-    // 0x1b: ???
-    () => {},
+    // 0x19: ADD HL,DE
+    () => {
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      hl = aluAddHL(hl, de);
+      h = hl >> 8;
+      l = hl & 0xff;
+      tacts += 7;
+    },
 
-    // 0x1c: ???
-    () => {},
+    // 0x1a: LD A,(DE)
+    () => {
+      wz = (de + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      a = memory.read(de);
+      tacts += 3;
+      af = (a << 8) | f;
+    },
 
-    // 0x1d: ???
-    () => {},
+    // 0x1b: DEC DE
+    () => {
+      de = (de - 1) & 0xffff;
+      tacts += 2;
+      d = de >> 8;
+      e = de & 0xff;
+    },
 
-    // 0x1e: ???
-    () => {},
+    // 0x1c: INC E
+    () => {
+      f = incOpFlags[e] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+      e = (e + 1) & 0xff;
+      de = (d << 8) | e;
+    },
 
-    // 0x1f: ???
-    () => {},
+    // 0x1d: DEC E
+    () => {
+      f = decOpFlags[e] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+      e = (e - 1) & 0xff;
+      de = (d << 8) | e;
+    },
 
-    // 0x20: ???
-    () => {},
+    // 0x1e: LD E,N
+    () => {
+      e = memory.read(pc);
+      pc = (pc + 1) & 0xffff;
+      tacts += 3;
+      de = (d << 8) | e;
+    },
+
+    // 0x1f: RRA
+    () => {
+      let rlcaVal = a;
+      const newCF = (rlcaVal & 0x01) !== 0 ? FlagsSetMask.C : 0;
+      rlcaVal >>= 1;
+      if ((f & FlagsSetMask.C) !== 0) {
+        rlcaVal |= 0x80;
+      }
+      a = rlcaVal;
+      f = newCF | (f & FlagsSetMask.SZPV);
+      af = (a << 8) | f;
+    },
+
+    // 0x20: JR NZ,E
+    () => {
+      const e = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.Z) !== 0) {
+        return;
+      }
+
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      wz = pc = (pc + toSbyte(e)) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+    },
 
     // 0x21: LD HL,NNNN
     () => {
@@ -389,89 +565,369 @@ export function z80CpuEngine(
       hl = (h << 8) | l;
     },
 
-    // 0x22: ???
-    () => {},
+    // 0x22: LD (NNNN),HL
+    () => {
+      // pc+1:3
+      const low = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
 
-    // 0x23: ???
-    () => {},
+      // pc+2:3
+      const addr = (memory.read(pc) << 8) | low;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
 
-    // 0x24: ???
-    () => {},
+      // nn:3
+      wz = (addr + 1) & 0xffff;
+      wzh = wz << 8;
+      wzl = wz & 0xff;
+      memory.write(addr, l);
+      tacts += 3;
 
-    // 0x25: ???
-    () => {},
+      // nn+1:3
+      memory.write(wz, h);
+      tacts += 3;
+    },
 
-    // 0x26: ???
-    () => {},
+    // 0x23: INC HL
+    () => {
+      hl = (hl + 1) & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      tacts += 2;
+    },
 
-    // 0x27: ???
-    () => {},
+    // 0x24: INC H
+    () => {
+      f = incOpFlags[h] | (f & FlagsSetMask.C);
+      h = (h + 1) & 0xff;
+      hl = (h << 8) | l;
+      af = (a << 8) | f;
+    },
 
-    // 0x28: ???
-    () => {},
+    // 0x25: DEC H
+    () => {
+      f = decOpFlags[h] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+      h = (h - 1) & 0xff;
+      hl = (h << 8) | l;
+    },
 
-    // 0x29: ???
-    () => {},
+    // 0x26: LD H,N
+    () => {
+      h = memory.read(pc);
+      pc = (pc + 1) & 0xffff;
+      tacts += 3;
+      hl = (h << 8) | l;
+    },
 
-    // 0x2a: ???
-    () => {},
+    // 0x27: DAA
+    () => {
+      const daaIndex = a + (((f & 3) + ((f >> 2) & 4)) << 8);
+      af = daaResults[daaIndex];
+    },
 
-    // 0x2b: ???
-    () => {},
+    // 0x28: JR Z,e
+    () => {
+      const e = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.Z) === 0) {
+        return;
+      }
 
-    // 0x2c: ???
-    () => {},
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      wz = pc = (pc + toSbyte(e)) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+    },
 
-    // 0x2d: ???
-    () => {},
+    // 0x29: ADD HL,HL
+    () => {
+      wz = (sp + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      hl = aluAddHL(hl, hl);
+      h = hl >> 8;
+      l = hl & 0xff;
+      tacts += 7;
+    },
 
-    // 0x2e: ???
-    () => {},
+    // 0x2a: LD HL,(NNNN)
+    () => {
+      // pc+1:3
+      let addr = memory.read(pc);
+      pc = (pc + 1) & 0xffff;
+      tacts += 3;
 
-    // 0x2f: ???
-    () => {},
+      // pc+2:3
+      addr += memory.read(pc) << 8;
+      pc = (pc + 1) & 0xffff;
+      tacts += 3;
 
-    // 0x30: ???
-    () => {},
+      // nn:3
+      wz = addr + 1;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      let val = memory.read(addr);
+      tacts += 3;
 
-    // 0x31: ???
-    () => {},
+      // nn+1:3
+      val += memory.read(wz) << 8;
+      tacts += 3;
+      hl = val;
+      h = hl >> 8;
+      l = hl & 0xff;
+    },
 
-    // 0x32: ???
-    () => {},
+    // 0x2b: DEC HL
+    () => {
+      hl = (hl - 1) & 0xffff;
+      tacts += 2;
+      h = hl >> 8;
+      l = hl & 0xff;
+    },
 
-    // 0x33: ???
-    () => {},
+    // 0x2c: INC L
+    () => {
+      f = incOpFlags[l] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+      l = (l + 1) & 0xff;
+      hl = (h << 8) | l;
+    },
 
-    // 0x34: ???
-    () => {},
+    // 0x2d: DEC L
+    () => {
+      f = decOpFlags[l] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+      l = (l - 1) & 0xff;
+      hl = (h << 8) | l;
+    },
 
-    // 0x35: ???
-    () => {},
+    // 0x2e: LD L,N
+    () => {
+      l = memory.read(pc);
+      pc = (pc + 1) & 0xffff;
+      tacts += 3;
+      hl = (h << 8) | l;
+    },
 
-    // 0x36: ???
-    () => {},
+    // 0x2f: CPL
+    () => {
+      a ^= 0xff;
+      f =
+        (f & ~FlagsSetMask.R3R5) |
+        FlagsSetMask.NH |
+        FlagsSetMask.H |
+        (a & FlagsSetMask.R3R5);
+      af = (a << 8) | f;
+    },
 
-    // 0x37: ???
-    () => {},
+    // 0x30: JR NC,e
+    () => {
+      const e = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.C) !== 0) {
+        return;
+      }
 
-    // 0x38: ???
-    () => {},
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      wz = pc = (pc + toSbyte(e)) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+    },
 
-    // 0x39: ???
-    () => {},
+    // 0x31: LD SP,NNNN
+    () => {
+      // pc+1:3
+      const low = memory.read(pc);
+      tacts += 3;
 
-    // 0x3a: ???
-    () => {},
+      // pc+2:3
+      pc = (pc + 1) & 0xffff;
+      const high = memory.read(pc);
+      pc = (pc + 1) & 0xffff;
+      tacts += 3;
+      sp = (high << 8) | low;
+    },
 
-    // 0x3b: ???
-    () => {},
+    // 0x32: LD (NNNN),A
+    () => {
+      // pc+1:3
+      const low = memory.read(pc);
+      pc = (pc + 1) & 0xfff;
+      tacts += 3;
 
-    // 0x3c: ???
-    () => {},
+      // pc+2:3
+      let addr = (memory.read(pc) << 8) | low;
+      pc = (pc + 1) & 0xfff;
+      tacts += 3;
 
-    // 0x3d: ???
-    () => {},
+      // nn:3
+      wz = ((addr + 1) & 0xff) + (a << 8);
+      wzl = wz & 0xff;
+      memory.write(addr, a);
+      wzh = a;
+      wz = (wzh << 8) | wzl;
+      tacts += 3;
+    },
+
+    // 0x33: INC SP
+    () => {
+      sp = (sp + 1) & 0xffff;
+      tacts += 2;
+    },
+
+    // 0x34: INC (HL)
+    () => {
+      let memValue = memory.read(hl);
+      if (useGateArrayContention) {
+        tacts += 4;
+      } else {
+        tacts += 3;
+        memory.read(hl);
+        tacts++;
+      }
+      memValue = aluIncByte(memValue);
+      memory.write(hl, memValue);
+      tacts += 3;
+    },
+
+    // 0x35: DEC (HL)
+    () => {
+      let memValue = memory.read(hl);
+      if (useGateArrayContention) {
+        tacts += 4;
+      } else {
+        tacts += 3;
+        memory.read(hl);
+        tacts++;
+      }
+      memValue = aluDecByte(memValue);
+      memory.write(hl, memValue);
+      tacts += 3;
+    },
+
+    // 0x36: LD (HL),N
+    () => {
+      // pc+1: 3
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      memory.write(hl, val);
+      tacts += 3;
+    },
+
+    // 0x37: SCF
+    () => {
+      f =
+        (f & FlagsSetMask.SZPV) |
+        (a & (FlagsSetMask.R5 | FlagsSetMask.R3)) |
+        FlagsSetMask.C;
+      af = (a << 8) | f;
+    },
+
+    // 0x38: JR C,E
+    () => {
+      const e = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.C) === 0) {
+        return;
+      }
+
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      wz = pc = (pc + toSbyte(e)) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+    },
+
+    // 0x39: ADD HL,SP
+    () => {
+      wz = (sp + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      hl = aluAddHL(hl, sp);
+      h = hl >> 8;
+      l = hl & 0xff;
+      tacts += 7;
+    },
+
+    // 0x3a: LD A,(NNNN)
+    () => {
+      let addr = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      addr += memory.read(pc) << 8;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      a = memory.read(addr);
+      af = (a << 8) | f;
+      tacts += 3;
+    },
+
+    // 0x3b: DEC SP
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts += 2;
+    },
+
+    // 0x3c: INC A
+    () => {
+      f = incOpFlags[a] | (f & FlagsSetMask.C);
+      a = (a + 1) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x3d: DEC A
+    () => {
+      f = decOpFlags[a] | (f & FlagsSetMask.C);
+      a = (a - 1) & 0xff;
+      af = (a << 8) | f;
+    },
 
     // 0x3e: LD A,N
     () => {
@@ -481,8 +937,14 @@ export function z80CpuEngine(
       tacts += 3;
     },
 
-    // 0x3f: ???
-    () => {},
+    // 0x3f: CCF
+    () => {
+      f =
+        (f & FlagsSetMask.SZPV) |
+        (a & (FlagsSetMask.R5 | FlagsSetMask.R3)) |
+        ((f & FlagsSetMask.C) !== 0 ? FlagsSetMask.H : FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
 
     // 0x40: ???
     () => {},
@@ -1033,8 +1495,41 @@ export function z80CpuEngine(
     return res & 0xffff;
   }
 
+  // Increments the specified value and sets F according to INC ALU logic
+  function aluIncByte(val: number): number {
+    f = incOpFlags[val] | (f & FlagsSetMask.C);
+    af = (a << 8) | f;
+    val++;
+    return val;
+  }
+
+  // Increments the specified value and sets F according to INC ALU logic
+  function aluDecByte(val: number): number {
+    f = decOpFlags[val] | (f & FlagsSetMask.C);
+    af = (a << 8) | f;
+    val--;
+    return val;
+  }
+
   // ==========================================================================
   // Helper functions
+
+  /**
+   * Converts an unsigned byte to a signed byte
+   */
+  function toSbyte(x: number) {
+    x &= 0xff;
+    return x >= 128 ? x - 256 : x;
+  }
+
+  /**
+   * Converts value to a signed short
+   * @param x
+   */
+  function toSshort(x: number) {
+    x &= 0xffff;
+    return x >= 32768 ? x - 65536 : x;
+  }
 
   function refreshMemory(): void {
     r = ((r + 1) & 0x7f) | (r & 0x80);
@@ -1240,4 +1735,104 @@ for (let b = 0; b < 0x100; b++) {
     ((oldVal & 0x0f) === 0x00 ? FlagsSetMask.H : 0) |
     (oldVal === 0x80 ? FlagsSetMask.PV : 0) |
     FlagsSetMask.N;
+}
+
+// --- DAA flags table
+const daaResults = [];
+for (let b = 0; b < 0x100; b++) {
+  const hNibble = b >> 4;
+  const lNibble = b & 0x0f;
+
+  for (let H = 0; H <= 1; H++) {
+    for (let N = 0; N <= 1; N++) {
+      for (let C = 0; C <= 1; C++) {
+        // --- Calculate DIFF and the new value of C Flag
+        let diff = 0x00;
+        let cAfter = 0;
+        if (C === 0) {
+          if (hNibble >= 0 && hNibble <= 9 && lNibble >= 0 && lNibble <= 9) {
+            diff = H === 0 ? 0x00 : 0x06;
+          } else if (
+            hNibble >= 0 &&
+            hNibble <= 8 &&
+            lNibble >= 0x0a &&
+            lNibble <= 0xf
+          ) {
+            diff = 0x06;
+          } else if (
+            hNibble >= 0x0a &&
+            hNibble <= 0x0f &&
+            lNibble >= 0 &&
+            lNibble <= 9 &&
+            H === 0
+          ) {
+            diff = 0x60;
+            cAfter = 1;
+          } else if (
+            hNibble >= 9 &&
+            hNibble <= 0x0f &&
+            lNibble >= 0x0a &&
+            lNibble <= 0xf
+          ) {
+            diff = 0x66;
+            cAfter = 1;
+          } else if (
+            hNibble >= 0x0a &&
+            hNibble <= 0x0f &&
+            lNibble >= 0 &&
+            lNibble <= 9
+          ) {
+            if (H === 1) {
+              diff = 0x66;
+            }
+            cAfter = 1;
+          }
+        } else {
+          // C == 1
+          cAfter = 1;
+          if (lNibble >= 0 && lNibble <= 9) {
+            diff = H === 0 ? 0x60 : 0x66;
+          } else if (lNibble >= 0x0a && lNibble <= 0x0f) {
+            diff = 0x66;
+          }
+        }
+
+        // --- Calculate new value of H Flag
+        let hAfter = 0;
+        if (
+          (lNibble >= 0x0a && lNibble <= 0x0f && N === 0) ||
+          (lNibble >= 0 && lNibble <= 5 && N === 1 && H === 1)
+        ) {
+          hAfter = 1;
+        }
+
+        // --- Calculate new value of register A
+        let A = (N === 0 ? b + diff : b - diff) & 0xff;
+
+        // --- Calculate other flags
+        let aPar = 0;
+        let val = A;
+        for (let i = 0; i < 8; i++) {
+          aPar += val & 0x01;
+          val >>= 1;
+        }
+
+        // --- Calculate result
+        let fAfter =
+          (A & FlagsSetMask.R3) |
+          (A & FlagsSetMask.R5) |
+          ((A & 0x80) !== 0 ? FlagsSetMask.S : 0) |
+          (A === 0 ? FlagsSetMask.Z : 0) |
+          (aPar % 2 === 0 ? FlagsSetMask.PV : 0) |
+          (N === 1 ? FlagsSetMask.N : 0) |
+          (hAfter === 1 ? FlagsSetMask.H : 0) |
+          (cAfter === 1 ? FlagsSetMask.C : 0);
+
+        let result = ((A << 8) | (fAfter & 0xff)) & 0xffff;
+        let fBefore = (H * 4 + N * 2 + C) & 0xff;
+        let idx = (fBefore << 8) + b;
+        daaResults[idx] = result;
+      }
+    }
+  }
 }
