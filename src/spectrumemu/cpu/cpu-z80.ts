@@ -946,86 +946,375 @@ export function z80CpuEngine(
       af = (a << 8) | f;
     },
 
-    // 0x40: ???
-    () => {},
+    // 0x40: LD B,B
+    null,
 
-    // 0x41: ???
-    () => {},
+    // 0x41: LD B,C
+    () => {
+      b = c;
+      bc = (b << 8) | c;
+    },
 
-    // 0x42: ???
-    () => {},
+    // 0x42: LD B,D
+    () => {
+      b = d;
+      bc = (b << 8) | c;
+    },
 
-    // 0x43: ???
-    () => {},
+    // 0x43: LD B,E
+    () => {
+      b = e;
+      bc = (b << 8) | c;
+    },
 
-    // 0x44: ???
-    () => {},
+    // 0x44: LD B,H
+    () => {
+      b = h;
+      bc = (b << 8) | c;
+    },
 
-    // 0x45: ???
-    () => {},
+    // 0x45: LD B,L
+    () => {
+      b = l;
+      bc = (b << 8) | c;
+    },
 
-    // 0x46: ???
-    () => {},
+    // 0x46: LD B,(HL)
+    () => {
+      b = memory.read(hl);
+      bc = (b << 8) | c;
+      tacts += 3;
+    },
 
-    // 0x47: ???
-    () => {},
+    // 0x47: LD B,A
+    () => {
+      b = a;
+      bc = (b << 8) | c;
+    },
 
-    // 0x48: ???
-    () => {},
+    // 0x48: LD C,B
+    () => {
+      c = b;
+      bc = (b << 8) | c;
+    },
 
-    // 0x49: ???
-    () => {},
+    // 0x49: LD C,C
+    null,
 
-    // 0x4a: ???
-    () => {},
+    // 0x4a: LD C,D
+    () => {
+      c = d;
+      bc = (b << 8) | c;
+    },
 
-    // 0x4b: ???
-    () => {},
+    // 0x4b: LD C,E
+    () => {
+      c = e;
+      bc = (b << 8) | c;
+    },
 
-    // 0x4c: ???
-    () => {},
+    // 0x4c: LD C,H
+    () => {
+      c = h;
+      bc = (b << 8) | c;
+    },
 
-    // 0x4d: ???
-    () => {},
+    // 0x4d: LD C,L
+    () => {
+      c = l;
+      bc = (b << 8) | c;
+    },
 
-    // 0x4e: ???
-    () => {},
+    // 0x4e: LD C,(HL)
+    () => {
+      c = memory.read(hl);
+      bc = (b << 8) | c;
+      tacts += 3;
+    },
 
-    // 0x4f: ???
-    () => {},
+    // 0x4f: LD C,A
+    () => {
+      c = a;
+      bc = (b << 8) | c;
+    },
 
-    // 0x50: ???
-    () => {},
+    // 0x50: LD D,B
+    () => {
+      d = b;
+      de = (d << 8) | e;
+    },
 
-    // 0x51: ???
-    () => {},
+    // 0x51: LD D,C
+    () => {
+      d = c;
+      de = (d << 8) | e;
+    },
 
-    // 0x52: ???
-    () => {},
+    // 0x52: LD D,D
+    null,
 
-    // 0x53: ???
-    () => {},
+    // 0x53: LD D,E
+    () => {
+      d = e;
+      de = (d << 8) | e;
+    },
 
-    // 0x54: ???
-    () => {},
+    // 0x54: LD D,H
+    () => {
+      d = h;
+      de = (d << 8) | e;
+    },
 
-    // 0x55: ???
-    () => {},
+    // 0x55: LD D,L
+    () => {
+      d = l;
+      de = (d << 8) | e;
+    },
 
-    // 0x56: ???
-    () => {},
+    // 0x56: LD D,(HL)
+    () => {
+      d = memory.read(hl);
+      de = (d << 8) | e;
+      tacts += 3;
+    },
 
-    // 0x57: ???
-    () => {},
+    // 0x57: LD D,A
+    () => {
+      d = a;
+      de = (d << 8) | e;
+    },
 
-    // 0x58: ???
-    () => {},
+    // 0x58: LD E,B
+    () => {
+      e = b;
+      de = (d << 8) | e;
+    },
 
-    // 0x59: ???
-    () => {},
+    // 0x59: LD E,C
+    () => {
+      e = c;
+      de = (d << 8) | e;
+    },
 
-    // 0x5a: ???
-    () => {}
+    // 0x5a: LD E,D
+    () => {
+      e = d;
+      de = (d << 8) | e;
+    },
+
+    // 0x5b: LD E,E
+    null,
+
+    // 0x5c: LD E,H
+    () => {
+      e = h;
+      de = (d << 8) | e;
+    },
+
+    // 0x5d: LD E,L
+    () => {
+      e = l;
+      de = (d << 8) | e;
+    },
+
+    // 0x5e: LD E,(HL)
+    () => {
+      e = memory.read(hl);
+      de = (d << 8) | e;
+      tacts += 3;
+    },
+
+    // 0x5f: LD E,A
+    () => {
+      e = a;
+      de = (d << 8) | e;
+    },
+
+    // 0x60: LD H,B
+    () => {
+      h = b;
+      hl = (h << 8) | l;
+    },
+
+    // 0x61: LD H,C
+    () => {
+      h = c;
+      hl = (h << 8) | l;
+    },
+
+    // 0x62: LD H,D
+    () => {
+      h = d;
+      hl = (h << 8) | l;
+    },
+
+    // 0x63: LD H,E
+    () => {
+      h = e;
+      hl = (h << 8) | l;
+    },
+
+    // 0x64: LD H,H
+    null,
+
+    // 0x65: LD H,L
+    () => {
+      h = l;
+      hl = (h << 8) | l;
+    },
+
+    // 0x66: LD H,(HL)
+    () => {
+      h = memory.read(hl);
+      hl = (h << 8) | l;
+      tacts += 3;
+    },
+
+    // 0x67: LD H,A
+    () => {
+      h = a;
+      hl = (h << 8) | l;
+    },
+
+    // 0x68: LD L,B
+    () => {
+      l = b;
+      hl = (h << 8) | l;
+    },
+
+    // 0x69: LD L,C
+    () => {
+      l = c;
+      hl = (h << 8) | l;
+    },
+
+    // 0x6a: LD L,D
+    () => {
+      l = d;
+      hl = (h << 8) | l;
+    },
+
+    // 0x6b: LD L,E
+    () => {
+      l = e;
+      hl = (h << 8) | l;
+    },
+
+    // 0x6c: LD L,H
+    () => {
+      l = h;
+      hl = (h << 8) | l;
+    },
+
+    // 0x6d: LD L,L
+    null,
+
+    // 0x6e: LD L,(HL)
+    () => {
+      l = memory.read(hl);
+      hl = (h << 8) | l;
+      tacts += 3;
+    },
+
+    // 0x6f: LD L,A
+    () => {
+      l = a;
+      hl = (h << 8) | l;
+    },
+
+    // 0x70: LD (HL),B
+    () => {
+      memory.write(hl, b);
+      tacts += 3;
+    },
+
+    // 0x71: LD (HL),C
+    () => {
+      memory.write(hl, c);
+      tacts += 3;
+    },
+
+    // 0x72: LD (HL),D
+    () => {
+      memory.write(hl, d);
+      tacts += 3;
+    },
+
+    // 0x73: LD (HL),E
+    () => {
+      memory.write(hl, e);
+      tacts += 3;
+    },
+
+    // 0x74: LD (HL),H
+    () => {
+      memory.write(hl, h);
+      tacts += 3;
+    },
+
+    // 0x75: LD (HL),L
+    () => {
+      memory.write(hl, l);
+      tacts += 3;
+    },
+
+    // 0x76: HALT
+    () => {
+      signals |= Z80CpuSignals.Halted;
+      pc = (pc - 1) & 0xffff;
+    },
+
+    // 0x77: LD (HL),A
+    () => {
+      memory.write(hl, a);
+      tacts += 3;
+    },
+
+    // 0x78: LD A,B
+    () => {
+      a = b;
+      af = (a << 8) | f;
+    },
+
+    // 0x79: LD A,C
+    () => {
+      a = c;
+      af = (a << 8) | f;
+    },
+
+    // 0x7a: LD A,D
+    () => {
+      a = d;
+      af = (a << 8) | f;
+    },
+
+    // 0x7b: LD A,E
+    () => {
+      a = e;
+      af = (a << 8) | f;
+    },
+
+    // 0x7c: LD A,H
+    () => {
+      a = h;
+      af = (a << 8) | f;
+    },
+
+    // 0x7d: LD A,L
+    () => {
+      a = l;
+      af = (a << 8) | f;
+    },
+
+    // 0x7e: LD A,(HL)
+    () => {
+      a = memory.read(hl);
+      af = (a << 8) | f;
+      tacts += 3;
+    },
+
+    // 0x7f: LD A,A
+    null
   ];
 
   const indexedOperations: Z80Operation[] = [];
