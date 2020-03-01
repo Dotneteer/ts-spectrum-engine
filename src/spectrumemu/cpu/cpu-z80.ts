@@ -1314,7 +1314,693 @@ export function z80CpuEngine(
     },
 
     // 0x7f: LD A,A
-    null
+    null,
+
+    // 0x80: ADD A,B
+    () => {
+      f = adcFlags[(a << 8) + b];
+      a = (a + b) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x81: ADD A,C
+    () => {
+      f = adcFlags[(a << 8) + c];
+      a = (a + c) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x82: ADD A,D
+    () => {
+      f = adcFlags[(a << 8) + d];
+      a = (a + d) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x83: ADD A,E
+    () => {
+      f = adcFlags[(a << 8) + e];
+      a = (a + e) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x84: ADD A,H
+    () => {
+      f = adcFlags[(a << 8) + h];
+      a = (a + h) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x85: ADD A,L
+    () => {
+      f = adcFlags[(a << 8) + l];
+      a = (a + l) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x86: ADD A,(HL)
+    () => {
+      const src = memory.read(hl);
+      f = adcFlags[(a << 8) + src];
+      a = (a + src) & 0xff;
+      af = (a << 8) | f;
+      tacts += 3;
+    },
+
+    // 0x87: ADD A,A
+    () => {
+      f = adcFlags[(a << 8) + a];
+      a = (a + a) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x88: ADC A,B
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = adcFlags[carry * 0x10000 + a * 0x100 + b];
+      a = (a + b + carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x89: ADC A,C
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = adcFlags[carry * 0x10000 + a * 0x100 + c];
+      a = (a + c + carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x8a: ADC A,D
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = adcFlags[carry * 0x10000 + a * 0x100 + d];
+      a = (a + d + carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x8b: ADC A,E
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = adcFlags[carry * 0x10000 + a * 0x100 + e];
+      a = (a + e + carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x8c: ADC A,H
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = adcFlags[carry * 0x10000 + a * 0x100 + h];
+      a = (a + h + carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x8d: ADC A,L
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = adcFlags[carry * 0x10000 + a * 0x100 + l];
+      a = (a + l + carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x8e: ADC A,(HL)
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      const src = memory.read(hl);
+      f = adcFlags[carry * 0x10000 + a * 0x100 + src];
+      a = (a + src + carry) & 0xff;
+      af = (a << 8) | f;
+      tacts += 3;
+    },
+
+    // 0x8f: ADC A,A
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = adcFlags[carry * 0x10000 + a * 0x100 + a];
+      a = (a + a + carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x90: SUB B
+    () => {
+      f = sbcFlags[a * 0x100 + b];
+      a = (a - b) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x91: SUB C
+    () => {
+      f = sbcFlags[a * 0x100 + c];
+      a = (a - c) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x92: SUB D
+    () => {
+      f = sbcFlags[a * 0x100 + d];
+      a = (a - d) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x93: SUB E
+    () => {
+      f = sbcFlags[a * 0x100 + e];
+      a = (a - e) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x94: SUB H
+    () => {
+      f = sbcFlags[a * 0x100 + h];
+      a = (a - h) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x95: SUB L
+    () => {
+      f = sbcFlags[a * 0x100 + l];
+      a = (a - l) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x96: SUB (HL)
+    () => {
+      const src = memory.read(hl);
+      tacts += 3;
+      f = sbcFlags[a * 0x100 + src];
+      a = (a - src) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x97: SUB A
+    () => {
+      f = sbcFlags[a * 0x100 + a];
+      a = 0;
+      af = f;
+    },
+
+    // 0x98: SBC A,B
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = sbcFlags[carry * 0x10000 + a * 0x100 + b];
+      a = (a - b - carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x99: SBC A,C
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = sbcFlags[carry * 0x10000 + a * 0x100 + c];
+      a = (a - c - carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x9a: SBC A,D
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = sbcFlags[carry * 0x10000 + a * 0x100 + d];
+      a = (a - d - carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x9b: SBC A,E
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = sbcFlags[carry * 0x10000 + a * 0x100 + e];
+      a = (a - e - carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x9c: SBC A,H
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = sbcFlags[carry * 0x10000 + a * 0x100 + h];
+      a = (a - h - carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x9d: SBC A,L
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = sbcFlags[carry * 0x10000 + a * 0x100 + l];
+      a = (a - l - carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x9e: SBC A,(HL)
+    () => {
+      const src = memory.read(hl);
+      tacts += 3;
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = sbcFlags[carry * 0x10000 + a * 0x100 + src];
+      a = (a - src - carry) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x9f: SBC A,A
+    () => {
+      const carry = (f & FlagsSetMask.C) === 0 ? 0 : 1;
+      f = sbcFlags[carry * 0x10000 + a * 0x100 + a];
+      a = -carry & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0xa0: AND B
+    () => {
+      a &= b;
+      f = aluLogOpFlags[a] | FlagsSetMask.H;
+      af = (a << 8) | f;
+    },
+
+    // 0xa1: AND C
+    () => {
+      a &= c;
+      f = aluLogOpFlags[a] | FlagsSetMask.H;
+      af = (a << 8) | f;
+    },
+
+    // 0xa2: AND D
+    () => {
+      a &= d;
+      f = aluLogOpFlags[a] | FlagsSetMask.H;
+      af = (a << 8) | f;
+    },
+
+    // 0xa3: AND E
+    () => {
+      a &= e;
+      f = aluLogOpFlags[a] | FlagsSetMask.H;
+      af = (a << 8) | f;
+    },
+
+    // 0xa4: AND H
+    () => {
+      a &= h;
+      f = aluLogOpFlags[a] | FlagsSetMask.H;
+      af = (a << 8) | f;
+    },
+
+    // 0xa5: AND L
+    () => {
+      a &= l;
+      f = aluLogOpFlags[a] | FlagsSetMask.H;
+      af = (a << 8) | f;
+    },
+
+    // 0xa6: AND (HL)
+    () => {
+      const src = memory.read(hl);
+      tacts += 3;
+      a &= src;
+      f = aluLogOpFlags[a] | FlagsSetMask.H;
+      af = (a << 8) | f;
+    },
+
+    // 0xa7: AND A
+    () => {
+      f = aluLogOpFlags[a] | FlagsSetMask.H;
+      af = (a << 8) | f;
+    },
+
+    // 0xa8: XOR B
+    () => {
+      a ^= b;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xa9: XOR C
+    () => {
+      a ^= c;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xaa: XOR D
+    () => {
+      a ^= d;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xab: XOR E
+    () => {
+      a ^= e;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xac: XOR H
+    () => {
+      a ^= h;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xad: XOR L
+    () => {
+      a ^= l;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xae: XOR (HL)
+    () => {
+      const src = memory.read(hl);
+      tacts += 3;
+      a ^= src;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xaf: XOR A
+    () => {
+      a = 0;
+      f = aluLogOpFlags[a];
+      af = f;
+    },
+
+    // 0xb0: OR B
+    () => {
+      a |= b;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xb1: OR C
+    () => {
+      a |= c;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xb2: OR D
+    () => {
+      a |= d;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xb3: OR E
+    () => {
+      a |= e;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xb4: OR H
+    () => {
+      a |= h;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xb5: OR L
+    () => {
+      a |= l;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xb6: OR (HL)
+    () => {
+      const src = memory.read(hl);
+      tacts += 3;
+      a |= src;
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xb7: OR A
+    () => {
+      f = aluLogOpFlags[a];
+      af = (a << 8) | f;
+    },
+
+    // 0xb8: CP B
+    () => {
+      const res = a * 0x100 + b;
+      f =
+        (sbcFlags[res] & FlagsResetMask.R3 & FlagsResetMask.R5) |
+        (res & FlagsSetMask.R3R5);
+      af = (a << 8) | f;
+    },
+
+    // 0xb9: CP C
+    () => {
+      const res = a * 0x100 + c;
+      f =
+        (sbcFlags[res] & FlagsResetMask.R3 & FlagsResetMask.R5) |
+        (res & FlagsSetMask.R3R5);
+      af = (a << 8) | f;
+    },
+
+    // 0xba: CP D
+    () => {
+      const res = a * 0x100 + d;
+      f =
+        (sbcFlags[res] & FlagsResetMask.R3 & FlagsResetMask.R5) |
+        (res & FlagsSetMask.R3R5);
+      af = (a << 8) | f;
+    },
+
+    // 0xbb: CP E
+    () => {
+      const res = a * 0x100 + e;
+      f =
+        (sbcFlags[res] & FlagsResetMask.R3 & FlagsResetMask.R5) |
+        (res & FlagsSetMask.R3R5);
+      af = (a << 8) | f;
+    },
+
+    // 0xbc: CP H
+    () => {
+      const res = a * 0x100 + h;
+      f =
+        (sbcFlags[res] & FlagsResetMask.R3 & FlagsResetMask.R5) |
+        (res & FlagsSetMask.R3R5);
+      af = (a << 8) | f;
+    },
+
+    // 0xbd: CP L
+    () => {
+      const res = a * 0x100 + l;
+      f =
+        (sbcFlags[res] & FlagsResetMask.R3 & FlagsResetMask.R5) |
+        (res & FlagsSetMask.R3R5);
+      af = (a << 8) | f;
+    },
+
+    // 0xbe: CP (HL)
+    () => {
+      const src = memory.read(hl);
+      tacts += 3;
+      const res = a * 0x100 + src;
+      f =
+        (sbcFlags[res] & FlagsResetMask.R3 & FlagsResetMask.R5) |
+        (res & FlagsSetMask.R3R5);
+      af = (a << 8) | f;
+    },
+
+    // 0xbf: CP A
+    () => {
+      const res = a * 0x100 + a;
+      f =
+        (sbcFlags[res] & FlagsResetMask.R3 & FlagsResetMask.R5) |
+        (res & FlagsSetMask.R3R5);
+      af = (a << 8) | f;
+    },
+
+    // 0xc0: ???
+    () => {},
+
+    // 0xc1: ???
+    () => {},
+
+    // 0xc2: ???
+    () => {},
+
+    // 0xc3: ???
+    () => {},
+
+    // 0xc4: ???
+    () => {},
+
+    // 0xc5: ???
+    () => {},
+
+    // 0xc6: ???
+    () => {},
+
+    // 0xc7: ???
+    () => {},
+
+    // 0xc8: ???
+    () => {},
+
+    // 0xc9: ???
+    () => {},
+
+    // 0xca: ???
+    () => {},
+
+    // 0xcb: ???
+    () => {},
+
+    // 0xcc: ???
+    () => {},
+
+    // 0xcd: ???
+    () => {},
+
+    // 0xce: ???
+    () => {},
+
+    // 0xcf: ???
+    () => {},
+
+    // 0xd0: ???
+    () => {},
+
+    // 0xd1: ???
+    () => {},
+
+    // 0xd2: ???
+    () => {},
+
+    // 0xd3: ???
+    () => {},
+
+    // 0xd4: ???
+    () => {},
+
+    // 0xd5: ???
+    () => {},
+
+    // 0xd6: ???
+    () => {},
+
+    // 0xd7: ???
+    () => {},
+
+    // 0xd8: ???
+    () => {},
+
+    // 0xd9: ???
+    () => {},
+
+    // 0xda: ???
+    () => {},
+
+    // 0xdb: ???
+    () => {},
+
+    // 0xdc: ???
+    () => {},
+
+    // 0xdd: ???
+    () => {},
+
+    // 0xde: ???
+    () => {},
+
+    // 0xdf: ???
+    () => {},
+
+    // 0xe0: ???
+    () => {},
+
+    // 0xe1: ???
+    () => {},
+
+    // 0xe2: ???
+    () => {},
+
+    // 0xe3: ???
+    () => {},
+
+    // 0xe4: ???
+    () => {},
+
+    // 0xe5: ???
+    () => {},
+
+    // 0xe6: ???
+    () => {},
+
+    // 0xe7: ???
+    () => {},
+
+    // 0xe8: ???
+    () => {},
+
+    // 0xe9: ???
+    () => {},
+
+    // 0xea: ???
+    () => {},
+
+    // 0xeb: ???
+    () => {},
+
+    // 0xec: ???
+    () => {},
+
+    // 0xed: ???
+    () => {},
+
+    // 0xee: ???
+    () => {},
+
+    // 0xef: ???
+    () => {},
+
+    // 0xf0: ???
+    () => {},
+
+    // 0xf1: ???
+    () => {},
+
+    // 0xf2: ???
+    () => {},
+
+    // 0xf3: ???
+    () => {},
+
+    // 0xf4: ???
+    () => {},
+
+    // 0xf5: ???
+    () => {},
+
+    // 0xf6: ???
+    () => {},
+
+    // 0xf7: ???
+    () => {},
+
+    // 0xf8: ???
+    () => {},
+
+    // 0xf9: ???
+    () => {},
+
+    // 0xfa: ???
+    () => {},
+
+    // 0xfb: ???
+    () => {},
+
+    // 0xfc: ???
+    () => {},
+
+    // 0xfd: ???
+    () => {},
+
+    // 0xfe: ???
+    () => {},
+
+    // 0xff: ???
+    () => {}
   ];
 
   const indexedOperations: Z80Operation[] = [];
@@ -1803,23 +2489,6 @@ export function z80CpuEngine(
   // ==========================================================================
   // Helper functions
 
-  /**
-   * Converts an unsigned byte to a signed byte
-   */
-  function toSbyte(x: number) {
-    x &= 0xff;
-    return x >= 128 ? x - 256 : x;
-  }
-
-  /**
-   * Converts value to a signed short
-   * @param x
-   */
-  function toSshort(x: number) {
-    x &= 0xffff;
-    return x >= 32768 ? x - 65536 : x;
-  }
-
   function refreshMemory(): void {
     r = ((r + 1) & 0x7f) | (r & 0x80);
     tacts++;
@@ -1992,6 +2661,26 @@ export enum FlagsResetMask {
 type Z80Operation = (() => void) | null;
 
 // ========================================================================
+// Helper functions
+
+/**
+ * Converts an unsigned byte to a signed byte
+ */
+function toSbyte(x: number) {
+  x &= 0xff;
+  return x >= 128 ? x - 256 : x;
+}
+
+/**
+ * Converts value to a signed short
+ * @param x
+ */
+function toSshort(x: number) {
+  x &= 0xffff;
+  return x >= 32768 ? x - 65536 : x;
+}
+
+// ========================================================================
 // Initialize the ALU helper tables
 
 // --- 8 bit INC operation flags
@@ -2124,4 +2813,234 @@ for (let b = 0; b < 0x100; b++) {
       }
     }
   }
+}
+
+// --- ADD and ADC flags
+const adcFlags = [];
+for (let C = 0; C < 2; C++) {
+  for (let X = 0; X < 0x100; X++) {
+    for (let Y = 0; Y < 0x100; Y++) {
+      const res = (X + Y + C) & 0xffff;
+      let flags = 0;
+      if ((res & 0xff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      flags |= res & (FlagsSetMask.R3 | FlagsSetMask.R5 | FlagsSetMask.S);
+      if (res >= 0x100) {
+        flags |= FlagsSetMask.C;
+      }
+      if ((((X & 0x0f) + (Y & 0x0f) + C) & 0x10) !== 0) {
+        flags |= FlagsSetMask.H;
+      }
+      let ri = toSbyte(X) + toSbyte(Y) + C;
+      if (ri >= 0x80 || ri <= -0x81) {
+        flags |= FlagsSetMask.PV;
+      }
+      adcFlags[C * 0x10000 + X * 0x100 + Y] = flags & 0xff;
+    }
+  }
+}
+
+// --- SUB and SBC flags
+const sbcFlags = [];
+for (let C = 0; C < 2; C++) {
+  for (let X = 0; X < 0x100; X++) {
+    for (let Y = 0; Y < 0x100; Y++) {
+      const res = X - Y - C;
+      let flags = res & (FlagsSetMask.R3 | FlagsSetMask.R5 | FlagsSetMask.S);
+      if ((res & 0xff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      if ((res & 0x10000) !== 0) {
+        flags |= FlagsSetMask.C;
+      }
+      let ri = toSbyte(X) - toSbyte(Y) - C;
+      if (ri >= 0x80 || ri < -0x80) {
+        flags |= FlagsSetMask.PV;
+      }
+      if ((((X & 0x0f) - (res & 0x0f) - C) & 0x10) !== 0) {
+        flags |= FlagsSetMask.H;
+      }
+      flags |= FlagsSetMask.N;
+      sbcFlags[C * 0x10000 + X * 0x100 + Y] = flags & 0xff;
+    }
+  }
+}
+
+// --- ALU log operation (AND, XOR, OR) flags
+const aluLogOpFlags = [];
+for (let b = 0; b < 0x100; b++) {
+  const fl = b & (FlagsSetMask.R3 | FlagsSetMask.R5 | FlagsSetMask.S);
+  let p = FlagsSetMask.PV;
+  for (let i = 0x80; i !== 0; i /= 2) {
+    if ((b & i) !== 0) {
+      p ^= FlagsSetMask.PV;
+    }
+  }
+  aluLogOpFlags[b] = (fl | p) & 0xff;
+}
+aluLogOpFlags[0] |= FlagsSetMask.Z;
+
+// --- 8-bit RLC operation flags
+const rlcFlags = [];
+for (let b = 0; b < 0x100; b++) {
+  let rlcVal = b;
+  rlcVal <<= 1;
+  let cf = (rlcVal & 0x100) !== 0 ? FlagsSetMask.C : 0;
+  if (cf !== 0) {
+    rlcVal = (rlcVal | 0x01) & 0xff;
+  }
+  let p = FlagsSetMask.PV;
+  for (let i = 0x80; i !== 0; i /= 2) {
+    if ((rlcVal & i) !== 0) {
+      p ^= FlagsSetMask.PV;
+    }
+  }
+  let flags =
+    ((rlcVal & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3)) | p | cf) &
+    0xff;
+  if (rlcVal === 0) {
+    flags |= FlagsSetMask.Z;
+  }
+  rlcFlags[b] = flags;
+}
+
+// --- 8-bit RRC operation flags
+const rrcFlags = [];
+for (let b = 0; b < 0x100; b++) {
+  let rrcVal = b;
+  let cf = (rrcVal & 0x01) !== 0 ? FlagsSetMask.C : 0;
+  rrcVal >>= 1;
+  if (cf !== 0) {
+    rrcVal = rrcVal | 0x80;
+  }
+  let p = FlagsSetMask.PV;
+  for (let i = 0x80; i !== 0; i /= 2) {
+    if ((rrcVal & i) !== 0) {
+      p ^= FlagsSetMask.PV;
+    }
+  }
+  let flags =
+    ((rrcVal & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3)) | p | cf) &
+    0xff;
+  if (rrcVal === 0) {
+    flags |= FlagsSetMask.Z;
+  }
+  rrcFlags[b] = flags;
+}
+
+// --- 8-bit RL operations with 0 Carry flag
+const rlCarry0Flags = [];
+for (let b = 0; b < 0x100; b++) {
+  let rlVal = b;
+  rlVal <<= 1;
+  let cf = (rlVal & 0x100) !== 0 ? FlagsSetMask.C : 0;
+  let p = FlagsSetMask.PV;
+  for (let i = 0x80; i !== 0; i /= 2) {
+    if ((rlVal & i) !== 0) {
+      p ^= FlagsSetMask.PV;
+    }
+  }
+  let flags =
+    ((rlVal & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3)) | p | cf) &
+    0xff;
+  if ((rlVal & 0xff) === 0) {
+    flags |= FlagsSetMask.Z;
+  }
+  rlCarry0Flags[b] = flags;
+}
+
+// --- 8-bit RL operations with Carry flag set
+const rlCarry1Flags = [];
+for (let b = 0; b < 0x100; b++) {
+  let rlVal = b;
+  rlVal <<= 1;
+  rlVal++;
+  let cf = (rlVal & 0x100) !== 0 ? FlagsSetMask.C : 0;
+  let p = FlagsSetMask.PV;
+  for (let i = 0x80; i !== 0; i /= 2) {
+    if ((rlVal & i) !== 0) {
+      p ^= FlagsSetMask.PV;
+    }
+  }
+  let flags =
+    ((rlVal & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3)) | p | cf) &
+    0xff;
+  if ((rlVal & 0x1ff) === 0) {
+    flags |= FlagsSetMask.Z;
+  }
+  rlCarry1Flags[b] = flags;
+}
+
+// --- 8-bit RR operations with 0 Carry flag
+const rrCarry0Flags = [];
+for (let b = 0; b < 0x100; b++) {
+  let rrVal = b;
+  let cf = (rrVal & 0x01) !== 0 ? FlagsSetMask.C : 0;
+  rrVal >>= 1;
+  let p = FlagsSetMask.PV;
+  for (let i = 0x80; i !== 0; i /= 2) {
+    if ((rrVal & i) !== 0) {
+      p ^= FlagsSetMask.PV;
+    }
+  }
+  let flags =
+    ((rrVal & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3)) | p | cf) &
+    0xff;
+  if (rrVal === 0) {
+    flags |= FlagsSetMask.Z;
+  }
+  rrCarry0Flags[b] = flags;
+}
+
+// --- 8-bit RR operations with Carry flag set
+const rrCarry1Flags = [];
+for (let b = 0; b < 0x100; b++) {
+  let rrVal = b;
+  let cf = (rrVal & 0x01) !== 0 ? FlagsSetMask.C : 0;
+  rrVal >>= 1;
+  rrVal += 0x80;
+  let p = FlagsSetMask.PV;
+  for (let i = 0x80; i !== 0; i /= 2) {
+    if ((rrVal & i) !== 0) {
+      p ^= FlagsSetMask.PV;
+    }
+  }
+  let flags =
+    ((rrVal & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3)) | p | cf) &
+    0xff;
+  if (rrVal === 0) {
+    flags |= FlagsSetMask.Z;
+  }
+  rrCarry1Flags[b] = flags;
+}
+
+// --- 8-bit SRA operation flags
+const sraFlags = [];
+for (let b = 0; b < 0x100; b++) {
+  let sraVal = b;
+  let cf = (sraVal & 0x01) !== 0 ? FlagsSetMask.C : 0;
+  sraVal = (sraVal >> 1) + (sraVal & 0x80);
+  let p = FlagsSetMask.PV;
+  for (let i = 0x80; i !== 0; i /= 2) {
+    if ((sraVal & i) !== 0) {
+      p ^= FlagsSetMask.PV;
+    }
+  }
+  let flags =
+    ((sraVal & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3)) | p | cf) &
+    0xff;
+  if ((sraVal & 0xff) === 0) {
+    flags |= FlagsSetMask.Z;
+  }
+  sraFlags[b] = flags;
+}
+
+// --- Initialize rotate operation tables
+const rolOpResults = [];
+const rorOpResults = [];
+
+for (let b = 0; b < 0x100; b++) {
+  rolOpResults[b] = ((b << 1) + (b >> 7)) & 0xff;
+  rorOpResults[b] = ((b >> 1) + (b << 7)) & 0xff;
 }
