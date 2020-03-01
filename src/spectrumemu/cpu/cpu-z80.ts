@@ -193,6 +193,17 @@ export function z80CpuEngine(
   let indexMode = OpIndexMode.None;
   let lastFethcedOpCode = 0x00;
 
+  const aluAlgorithms: ((value: number, carry: boolean) => void)[] = [
+    AluADD,
+    AluADC,
+    AluSUB,
+    AluSBC,
+    AluAND,
+    AluXOR,
+    AluOR,
+    AluCP
+  ];
+
   // ============================================================================
   // Standars Z80 operations
 
@@ -1810,197 +1821,937 @@ export function z80CpuEngine(
       af = (a << 8) | f;
     },
 
-    // 0xc0: ???
-    () => {},
+    // 0xc0: RET NZ
+    () => {
+      tacts++;
+      if ((f & FlagsSetMask.Z) !== 0) {
+        return;
+      }
+      wz = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      wz += memory.read(sp) * 0x100;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      pc = wz;
+    },
 
-    // 0xc1: ???
-    () => {},
+    // 0xc1: POP BC
+    () => {
+      const val = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      bc = (memory.read(sp) << 8) | val;
+      b = bc >> 8;
+      c = bc & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+    },
 
-    // 0xc2: ???
-    () => {},
+    // 0xc2: JP NZ,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.Z) !== 0) {
+        return;
+      }
+      pc = wz;
+    },
 
-    // 0xc3: ???
-    () => {},
+    // 0xc3: JP NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      pc = wz;
+    },
 
-    // 0xc4: ???
-    () => {},
+    // 0xc4: CALL NZ,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.Z) !== 0) {
+        return;
+      }
+      if (!useGateArrayContention) {
+        memory.read(pc);
+      }
+      tacts++;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc);
+      tacts += 3;
+      pc = wz;
+    },
 
-    // 0xc5: ???
-    () => {},
+    // 0xc5: PUSH BC
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, b);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, c);
+      tacts += 3;
+    },
 
-    // 0xc6: ???
-    () => {},
+    // 0xc6: ADD A,N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      aluAlgorithms[0](val, (f & FlagsSetMask.C) !== 0);
+    },
 
-    // 0xc7: ???
-    () => {},
+    // 0xc7: RST 00
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc & 0xff);
+      tacts += 3;
 
-    // 0xc8: ???
-    () => {},
+      wz = 0x0000;
+      wzh = 0x00;
+      wzl = 0x00;
+      pc = wz;
+    },
 
-    // 0xc9: ???
-    () => {},
+    // 0xc8: RET Z
+    () => {
+      tacts++;
+      if ((f & FlagsSetMask.Z) === 0) {
+        return;
+      }
+      wz = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      wz += memory.read(sp) * 0x100;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      pc = wz;
+    },
 
-    // 0xca: ???
-    () => {},
+    // 0xc9: RET
+    () => {
+      wz = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      wz += memory.read(sp) * 0x100;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      pc = wz;
+    },
 
-    // 0xcb: ???
-    () => {},
+    // 0xca: JP Z,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.Z) === 0) {
+        return;
+      }
+      pc = wz;
+    },
 
-    // 0xcc: ???
-    () => {},
+    // 0xcb: BIT operation prefix
+    null,
 
-    // 0xcd: ???
-    () => {},
+    // 0xcc: CALL Z,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.Z) === 0) {
+        return;
+      }
+      if (!useGateArrayContention) {
+        memory.read(pc);
+      }
+      tacts++;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc);
+      tacts += 3;
+      pc = wz;
+    },
 
-    // 0xce: ???
-    () => {},
+    // 0xcd: CALL NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if (!useGateArrayContention) {
+        memory.read(pc);
+      }
+      tacts++;
 
-    // 0xcf: ???
-    () => {},
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc & 0xff);
+      tacts += 3;
+      pc = wz;
+    },
 
-    // 0xd0: ???
-    () => {},
+    // 0xce: ADC A,N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      aluAlgorithms[1](val, (f & FlagsSetMask.C) !== 0);
+    },
 
-    // 0xd1: ???
-    () => {},
+    // 0xcf: RST 08
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc & 0xff);
+      tacts += 3;
 
-    // 0xd2: ???
-    () => {},
+      wz = 0x0008;
+      wzh = 0x00;
+      wzl = 0x08;
+      pc = wz;
+    },
 
-    // 0xd3: ???
-    () => {},
+    // 0xd0: RET NC
+    () => {
+      tacts++;
+      if ((f & FlagsSetMask.C) !== 0) {
+        return;
+      }
+      wz = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      wz += memory.read(sp) * 0x100;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      pc = wz;
+    },
 
-    // 0xd4: ???
-    () => {},
+    // 0xd1: POP DE
+    () => {
+      const val = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      de = (memory.read(sp) << 8) | val;
+      d = de >> 8;
+      e = de & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+    },
 
-    // 0xd5: ???
-    () => {},
+    // 0xd2: JP NC,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.C) !== 0) {
+        return;
+      }
+      pc = wz;
+    },
 
-    // 0xd6: ???
-    () => {},
+    // 0xd3: OUT (N),A
+    () => {
+      // pc+1:3
+      let port = memory.read(pc);
+      pc = (pc + 1) & 0xffff;
+      tacts += 3;
 
-    // 0xd7: ???
-    () => {},
+      // I/O
+      wz = ((port + 1) & 0xff) + (a << 8);
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      port += a << 8;
+      portInterface.writePort(port, a);
+    },
 
-    // 0xd8: ???
-    () => {},
+    // 0xd4: CALL NC,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.C) !== 0) {
+        return;
+      }
+      if (!useGateArrayContention) {
+        memory.read(pc);
+      }
+      tacts++;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc);
+      tacts += 3;
+      pc = wz;
+    },
 
-    // 0xd9: ???
-    () => {},
+    // 0xd5: PUSH DE
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, d);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, e);
+      tacts += 3;
+    },
 
-    // 0xda: ???
-    () => {},
+    // 0xd6: SUB A,N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      aluAlgorithms[2](val, (f & FlagsSetMask.C) !== 0);
+    },
 
-    // 0xdb: ???
-    () => {},
+    // 0xd7: RST 10
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc & 0xff);
+      tacts += 3;
 
-    // 0xdc: ???
-    () => {},
+      wz = 0x0010;
+      wzh = 0x00;
+      wzl = 0x10;
+      pc = wz;
+    },
 
-    // 0xdd: ???
-    () => {},
+    // 0xd8: RET C
+    () => {
+      tacts++;
+      if ((f & FlagsSetMask.C) === 0) {
+        return;
+      }
+      wz = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      wz += memory.read(sp) * 0x100;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      pc = wz;
+    },
 
-    // 0xde: ???
-    () => {},
+    // 0xd9: EXX
+    () => {
+      let tmp = bc;
+      bc = _bc_;
+      b = bc >> 8;
+      c = bc & 0xff;
+      _bc_ = tmp;
+      tmp = de;
+      de = _de_;
+      d = de >> 8;
+      e = de & 0xff;
+      _de_ = tmp;
+      tmp = hl;
+      hl = _hl_;
+      h = hl >> 8;
+      l = hl & 0xff;
+      _hl_ = tmp;
+    },
 
-    // 0xdf: ???
-    () => {},
+    // 0xda: JP C,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.C) === 0) {
+        return;
+      }
+      pc = wz;
+    },
 
-    // 0xe0: ???
-    () => {},
+    // 0xdb: IN A,(N)
+    () => {
+      // pc+1:3
+      let port = memory.read(pc);
+      pc = (pc + 1) & 0xffff;
+      tacts += 3;
 
-    // 0xe1: ???
-    () => {},
+      // I/O
+      port += a << 8;
+      wz = ((a << 8) + port + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      a = portInterface.readPort(port);
+      af = (a << 8) | f;
+    },
 
-    // 0xe2: ???
-    () => {},
+    // 0xdc: CALL C,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.C) === 0) {
+        return;
+      }
+      if (!useGateArrayContention) {
+        memory.read(pc);
+      }
+      tacts++;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc);
+      tacts += 3;
+      pc = wz;
+    },
 
-    // 0xe3: ???
-    () => {},
+    // 0xdd: IX prefix
+    null,
 
-    // 0xe4: ???
-    () => {},
+    // 0xde: SBC A,N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      aluAlgorithms[3](val, (f & FlagsSetMask.C) !== 0);
+    },
 
-    // 0xe5: ???
-    () => {},
+    // 0xdf: RST 18
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc & 0xff);
+      tacts += 3;
 
-    // 0xe6: ???
-    () => {},
+      wz = 0x0018;
+      wzh = 0x00;
+      wzl = 0x18;
+      pc = wz;
+    },
 
-    // 0xe7: ???
-    () => {},
+    // 0xe0: RET PO
+    () => {
+      tacts++;
+      if ((f & FlagsSetMask.PV) !== 0) {
+        return;
+      }
+      wz = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      wz += memory.read(sp) * 0x100;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      pc = wz;
+    },
 
-    // 0xe8: ???
-    () => {},
+    // 0xe1: POP HL
+    () => {
+      const val = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      hl = (memory.read(sp) << 8) | val;
+      h = hl >> 8;
+      l = hl & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+    },
 
-    // 0xe9: ???
-    () => {},
+    // 0xe2: JP PO,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.PV) !== 0) {
+        return;
+      }
+      pc = wz;
+    },
 
-    // 0xea: ???
-    () => {},
+    // 0xe3: EX (SP),HL
+    () => {
+      let tmpSp = sp;
+      wz = memory.read(tmpSp);
+      tacts += 3;
+      tmpSp = (tmpSp + 1) & 0xffff;
+      wz += memory.read(tmpSp) * 0x100;
+      if (useGateArrayContention) {
+        tacts += 4;
+      } else {
+        tacts += 3;
+        memory.read(tmpSp);
+        tacts++;
+      }
+      memory.write(tmpSp, h);
+      tmpSp = (tmpSp - 1) & 0xffff;
+      tacts += 3;
+      memory.write(tmpSp, l);
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        tacts += 3;
+        memory.write(tmpSp, l);
+        tacts++;
+        memory.write(tmpSp, l);
+        tacts++;
+      }
+      hl = wz;
+      h = wzh = wz >> 8;
+      l = wzl = wz & 0xff;
+    },
 
-    // 0xeb: ???
-    () => {},
+    // 0xe4: CALL PO,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.PV) !== 0) {
+        return;
+      }
+      if (!useGateArrayContention) {
+        memory.read(pc);
+      }
+      tacts++;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc);
+      tacts += 3;
+      pc = wz;
+    },
 
-    // 0xec: ???
-    () => {},
+    // 0xe5: PUSH HL
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, h);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, l);
+      tacts += 3;
+    },
 
-    // 0xed: ???
-    () => {},
+    // 0xe6: AND A,N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      aluAlgorithms[4](val, (f & FlagsSetMask.C) !== 0);
+    },
 
-    // 0xee: ???
-    () => {},
+    // 0xe7: RST 20
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc & 0xff);
+      tacts += 3;
 
-    // 0xef: ???
-    () => {},
+      wz = 0x0020;
+      wzh = 0x00;
+      wzl = 0x20;
+      pc = wz;
+    },
 
-    // 0xf0: ???
-    () => {},
+    // 0xe8: RET PE
+    () => {
+      tacts++;
+      if ((f & FlagsSetMask.PV) === 0) {
+        return;
+      }
+      wz = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      wz += memory.read(sp) * 0x100;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      pc = wz;
+    },
 
-    // 0xf1: ???
-    () => {},
+    // 0xe9: JP (HL)
+    () => {
+      pc = hl;
+    },
 
-    // 0xf2: ???
-    () => {},
+    // 0xea: JP PE,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.PV) === 0) {
+        return;
+      }
+      pc = wz;
+    },
 
-    // 0xf3: ???
-    () => {},
+    // 0xeb: EX DE,HL
+    () => {
+      const tmp = de;
+      de = hl;
+      d = de >> 8;
+      e = de & 0xff;
+      hl = tmp;
+      h = hl >> 8;
+      l = hl & 0xff;
+    },
 
-    // 0xf4: ???
-    () => {},
+    // 0xec: CALL PE,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.PV) === 0) {
+        return;
+      }
+      if (!useGateArrayContention) {
+        memory.read(pc);
+      }
+      tacts++;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc);
+      tacts += 3;
+      pc = wz;
+    },
 
-    // 0xf5: ???
-    () => {},
+    // 0xed: EXT instruction set prefix
+    null,
 
-    // 0xf6: ???
-    () => {},
+    // 0xee: XOR A,N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      aluAlgorithms[5](val, (f & FlagsSetMask.C) !== 0);
+    },
 
-    // 0xf7: ???
-    () => {},
+    // 0xef: RST 28
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc & 0xff);
+      tacts += 3;
 
-    // 0xf8: ???
-    () => {},
+      wz = 0x0028;
+      wzh = 0x00;
+      wzl = 0x28;
+      pc = wz;
+    },
 
-    // 0xf9: ???
-    () => {},
+    // 0xf0: RET P
+    () => {
+      tacts++;
+      if ((f & FlagsSetMask.S) !== 0) {
+        return;
+      }
+      wz = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      wz += memory.read(sp) * 0x100;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      pc = wz;
+    },
 
-    // 0xfa: ???
-    () => {},
+    // 0xf1: POP AF
+    () => {
+      const val = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      af = (memory.read(sp) << 8) | val;
+      a = af >> 8;
+      f = af & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+    },
 
-    // 0xfb: ???
-    () => {},
+    // 0xf2: JP P,NN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.S) !== 0) {
+        return;
+      }
+      pc = wz;
+    },
 
-    // 0xfc: ???
-    () => {},
+    // 0xf3: di
+    () => {
+      iff2 = iff1 = false;
+    },
 
-    // 0xfd: ???
-    () => {},
+    // 0xf4: CALL P,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.S) !== 0) {
+        return;
+      }
+      if (!useGateArrayContention) {
+        memory.read(pc);
+      }
+      tacts++;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc);
+      tacts += 3;
+      pc = wz;
+    },
 
-    // 0xfe: ???
-    () => {},
+    // 0xf5: PUSH AF
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, a);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, f);
+      tacts += 3;
+    },
 
-    // 0xff: ???
-    () => {}
+    // 0xf6: OR A,N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      aluAlgorithms[6](val, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0xf7: RST 30
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc & 0xff);
+      tacts += 3;
+
+      wz = 0x0030;
+      wzh = 0x00;
+      wzl = 0x30;
+      pc = wz;
+    },
+
+    // 0xf8: RET M
+    () => {
+      tacts++;
+      if ((f & FlagsSetMask.S) === 0) {
+        return;
+      }
+      wz = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      wz += memory.read(sp) * 0x100;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      pc = wz;
+    },
+
+    // 0xf9: LD SP,HL
+    () => {
+      sp = hl;
+      tacts += 2;
+    },
+
+    // 0xfa: JP M,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.S) === 0) {
+        return;
+      }
+      pc = wz;
+    },
+
+    // 0xfb: EI
+    () => {
+      iff2 = iff1 = isInterruptBlocked = true;
+    },
+
+    // 0xfc: CALL M,NNNN
+    () => {
+      wz = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz += memory.read(pc) << 8;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if ((f & FlagsSetMask.S) === 0) {
+        return;
+      }
+      if (!useGateArrayContention) {
+        memory.read(pc);
+      }
+      tacts++;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc);
+      tacts += 3;
+      pc = wz;
+    },
+
+    // 0xfd: IY index prefix
+    null,
+
+    // 0xfe: CP N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      aluAlgorithms[7](val, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0xff: RST 38
+    () => {
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, pc >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, pc & 0xff);
+      tacts += 3;
+
+      wz = 0x0038;
+      wzh = 0x00;
+      wzl = 0x38;
+      pc = wz;
+    }
   ];
 
   const indexedOperations: Z80Operation[] = [];
@@ -2345,11 +3096,11 @@ export function z80CpuEngine(
         }
         iff2 = iff1;
         iff1 = false;
-        sp--;
+        sp = (sp - 1) & 0xffff;
         tacts++;
         memory.write(sp, pc >> 8);
         tacts += 3;
-        sp--;
+        sp = (sp - 1) & 0xffff;
         memory.write(sp, pc & 0xff);
         tacts += 3;
 
@@ -2372,11 +3123,11 @@ export function z80CpuEngine(
       }
       iff1 = false;
       iff2 = false;
-      sp--;
+      sp = (sp - 1) & 0xffff;
       tacts++;
       memory.write(sp, pc >> 8);
       tacts += 3;
-      sp--;
+      sp = (sp - 1) & 0xffff;
       memory.write(sp, pc & 0xff);
       tacts += 3;
 
@@ -2519,6 +3270,113 @@ export function z80CpuEngine(
    */
   function processCBPrefixedOperations(): void {
     // TODO: Implement this method
+  }
+
+  function AluADD(right: number, cf: boolean) {
+    AluADC(right, false);
+  }
+
+  // Executes the ADC operation.
+  function AluADC(right: number, cf: boolean) {
+    const c = cf ? 1 : 0;
+    const result = a + right + c;
+    const signed = toSbyte(a) + toSbyte(right) + c;
+    const lNibble = ((a & 0x0f) + (right & 0x0f) + c) & 0x10;
+
+    var flags =
+      result & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3) & 0xff;
+    if ((result & 0xff) === 0) {
+      flags |= FlagsSetMask.Z;
+    }
+    if (result >= 0x100) {
+      flags |= FlagsSetMask.C;
+    }
+    if (lNibble !== 0) {
+      flags |= FlagsSetMask.H;
+    }
+    if (signed >= 0x80 || signed <= -0x81) {
+      flags |= FlagsSetMask.PV;
+    }
+    f = flags;
+    a = result;
+    af = (a << 8) | f;
+  }
+
+  // Executes the SUB operation.
+  function AluSUB(right: number, cf: boolean) {
+    AluSBC(right, false);
+  }
+
+  // Executes the SBC operation.
+  function AluSBC(right: number, cf: boolean) {
+    const c = cf ? 1 : 0;
+    const result = a - right - c;
+    const signed = toSbyte(a) - toSbyte(right) - c;
+    const lNibble = ((a & 0x0f) - (right & 0x0f) - c) & 0x10;
+
+    var flags =
+      result & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3) & 0x0f;
+    flags |= FlagsSetMask.N;
+    if ((result & 0xff) === 0) {
+      flags |= FlagsSetMask.Z;
+    }
+    if ((result & 0x10000) !== 0) {
+      flags |= FlagsSetMask.C;
+    }
+    if (lNibble !== 0) {
+      flags |= FlagsSetMask.H;
+    }
+    if (signed >= 0x80 || signed <= -0x81) {
+      flags |= FlagsSetMask.PV;
+    }
+    f = flags;
+    a = result;
+    af = (a << 8) | f;
+  }
+
+  // Executes the AND operation.
+  function AluAND(right: number, cf: boolean) {
+    a &= right;
+    f = aluLogOpFlags[a] | FlagsSetMask.H;
+    af = (a << 8) | f;
+  }
+
+  // Executes the XOR operation.
+  function AluXOR(right: number, cf: boolean) {
+    a ^= right;
+    f = aluLogOpFlags[a];
+    af = (a << 8) | f;
+  }
+
+  // Executes the OR operation.
+  function AluOR(right: number, cf: boolean) {
+    a |= right;
+    f = aluLogOpFlags[a];
+    af = (a << 8) | f;
+  }
+
+  // Executes the CP operation.
+  function AluCP(right: number, cf: boolean) {
+    const result = a - right;
+    const signed = toSbyte(a) - toSbyte(right);
+    const lNibble = ((a & 0x0f) - (right & 0x0f)) & 0x10;
+    var flags =
+      result & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3) & 0xff;
+    flags |= FlagsSetMask.N;
+    if ((result & 0xff) === 0) {
+      flags |= FlagsSetMask.Z;
+    }
+    if ((result & 0x10000) !== 0) {
+      flags |= FlagsSetMask.C;
+    }
+    if (lNibble !== 0) {
+      flags |= FlagsSetMask.H;
+    }
+    if (signed >= 0x80 || signed <= -0x81) {
+      flags |= FlagsSetMask.PV;
+    }
+    f = flags;
+    af = (a << 8) | f;
   }
 }
 

@@ -1,7 +1,7 @@
 import "mocha";
 import * as expect from "expect";
 import { Z80TestMachine, RunMode } from "./Z80TestMachine";
-import { Z80CpuSignals } from "../src/spectrumemu/cpu/cpu-z80";
+
 describe("Z80 CPU - standard 80-bf", () => {
   it("ADD A,B", () => {
     // --- Arrange
