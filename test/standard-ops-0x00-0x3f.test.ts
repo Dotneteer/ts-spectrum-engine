@@ -2611,6 +2611,29 @@ describe("Z80 CPU - standard 00-3f", () => {
     expect(s.tacts).toBe(20);
   });
 
+  it("LD SP,NN", () => {
+    // --- Arrange
+    const m = new Z80TestMachine(RunMode.OneInstruction);
+    m.initCode([
+      0x31,
+      0x26,
+      0xa9 // LD SP,#A926
+    ]);
+
+    // --- Act
+    m.run();
+
+    // --- Assert
+    const s = m.cpu.getCpuState();
+
+    m.shouldKeepRegisters("SP");
+    m.shouldKeepMemory();
+
+    expect(s.sp).toBe(0xa926);
+    expect(s.pc).toBe(0x0003);
+    expect(s.tacts).toBe(10);
+  });
+
   it("LD (NN),A", () => {
     // --- Arrange
     const m = new Z80TestMachine(RunMode.UntilEnd);
@@ -3048,6 +3071,135 @@ describe("Z80 CPU - standard 00-3f", () => {
     expect(s.a).toBe(0x30);
     expect(s.pc).toBe(0x0003);
     expect(s.tacts).toBe(11);
+  });
+
+  it("DEC A", () => {
+    // --- Arrange
+    const m = new Z80TestMachine(RunMode.UntilEnd);
+    m.initCode([
+      0x3e,
+      0x43, // LD A,#43
+      0x3d // DEC A
+    ]);
+
+    // --- Act
+    m.run();
+
+    // --- Assert
+    const s = m.cpu.getCpuState();
+
+    m.shouldKeepRegisters("A, F");
+    m.shouldKeepMemory();
+    m.shouldKeepCFlag();
+    expect(s.nFlag).toBeTruthy();
+
+    expect(s.a).toBe(0x42);
+    expect(s.pc).toBe(0x0003);
+    expect(s.tacts).toBe(11);
+  });
+
+  it("DEC A sets Z flag", () => {
+    // --- Arrange
+    const m = new Z80TestMachine(RunMode.UntilEnd);
+    m.initCode([
+      0x3e,
+      0x01, // LD A,#01
+      0x3d // DEC A
+    ]);
+
+    // --- Act
+    m.run();
+
+    // --- Assert
+    const s = m.cpu.getCpuState();
+
+    m.shouldKeepRegisters("A, F");
+    m.shouldKeepMemory();
+    m.shouldKeepCFlag();
+    expect(s.nFlag).toBeTruthy();
+
+    expect(s.zFlag).toBeTruthy();
+
+    expect(s.a).toBe(0x00);
+    expect(s.pc).toBe(0x0003);
+    expect(s.tacts).toBe(11);
+  });
+
+  it("DEC A sets S and PV flags", () => {
+    // --- Arrange
+    const m = new Z80TestMachine(RunMode.UntilEnd);
+    m.initCode([
+      0x3e,
+      0x80, // LD A,#80
+      0x3d // DEC A
+    ]);
+
+    // --- Act
+    m.run();
+
+    // --- Assert
+    const s = m.cpu.getCpuState();
+
+    m.shouldKeepRegisters("A, F");
+    m.shouldKeepMemory();
+    m.shouldKeepCFlag();
+    expect(s.nFlag).toBeTruthy();
+
+    expect(s.sFlag).toBeFalsy();
+    expect(s.pvFlag).toBeTruthy();
+
+    expect(s.a).toBe(0x7f);
+    expect(s.pc).toBe(0x0003);
+    expect(s.tacts).toBe(11);
+  });
+
+  it("DEC A sets H flag", () => {
+    // --- Arrange
+    const m = new Z80TestMachine(RunMode.UntilEnd);
+    m.initCode([
+      0x3e,
+      0x20, // LD A,#20
+      0x3d // DEC A
+    ]);
+
+    // --- Act
+    m.run();
+
+    // --- Assert
+    const s = m.cpu.getCpuState();
+
+    m.shouldKeepRegisters("A, F");
+    m.shouldKeepMemory();
+    m.shouldKeepCFlag();
+    expect(s.nFlag).toBeTruthy();
+
+    expect(s.hFlag).toBeTruthy();
+
+    expect(s.a).toBe(0x1f);
+    expect(s.pc).toBe(0x0003);
+    expect(s.tacts).toBe(11);
+  });
+
+  it("LD A,N", () => {
+    // --- Arrange
+    const m = new Z80TestMachine(RunMode.OneInstruction);
+    m.initCode([
+      0x3e,
+      0x26 // LD A,#26
+    ]);
+
+    // --- Act
+    m.run();
+
+    // --- Assert
+    const s = m.cpu.getCpuState();
+
+    m.shouldKeepRegisters("A");
+    m.shouldKeepMemory();
+
+    expect(s.a).toBe(0x26);
+    expect(s.pc).toBe(0x0002);
+    expect(s.tacts).toBe(7);
   });
 
   it("CCF", () => {

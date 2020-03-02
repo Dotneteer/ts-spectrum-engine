@@ -2754,7 +2754,498 @@ export function z80CpuEngine(
     }
   ];
 
-  const indexedOperations: Z80Operation[] = [];
+  const indexedOperations: (Z80Operation | number)[] = [
+    // 0x00: NOP
+    null,
+
+    // 0x01: LD BC,NNNN
+    1,
+
+    // 0x02: LD BC,A
+    1,
+
+    // 0x03: INC BC
+    1,
+
+    // 0x04: INC B
+    1,
+
+    // 0x05: DEC B
+    1,
+
+    // 0x06: LD B,N
+    1,
+
+    // 0x07: RLCA
+    1,
+
+    // 0x08: EX AF,AF'
+    1,
+
+    // 0x09: ADD IX,BC / ADD IY,BC
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      wz = ixVal + 1;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 4;
+      const regVal = bc;
+      const result = ixVal + regVal;
+      f = f & (FlagsSetMask.S | FlagsSetMask.Z | FlagsSetMask.PV);
+      f |= (result >> 8) & 0xff & (FlagsSetMask.R5 | FlagsSetMask.R3);
+      f |= (((ixVal & 0x0fff) + (regVal & 0x0fff)) >> 8) & FlagsSetMask.H;
+      if ((result & 0x10000) !== 0) {
+        f |= FlagsSetMask.C;
+      }
+      af = (a << 8) | f;
+      if (indexMode === OpIndexMode.IX) {
+        ix = result & 0xffff;
+        xh = ix >> 8;
+        xl = ix & 0xff;
+      } else {
+        iy = result & 0xffff;
+        yh = iy >> 8;
+        yl = iy & 0xff;
+      }
+      tacts += 3;
+    },
+
+    // 0x0a: LD A,(BC)
+    1,
+
+    // 0x0b: DEC BC
+    1,
+
+    // 0x0c: INC C
+    1,
+
+    // 0x0d: DEC C
+    1,
+
+    // 0x0e: LD C,N
+    1,
+
+    // 0x0f: RRCA
+    1,
+
+    // 0x10: DJNZ E,
+    1,
+
+    // 0x11: LD DE,NNNN
+    1,
+
+    // 0x12: LD (DE),A
+    1,
+
+    // 0x13: INC DE,
+    1,
+
+    // 0x14: INC D
+    1,
+
+    // 0x15: DEC D
+    1,
+
+    // 0x16: LD D,N
+    1,
+
+    // 0x17: RLA
+    1,
+
+    // 0x18: JR e
+    1,
+
+    // 0x19: ADD IX,DE / ADD IY/DE
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      wz = ixVal + 1;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 4;
+      const regVal = de;
+      const result = ixVal + regVal;
+      f = f & (FlagsSetMask.S | FlagsSetMask.Z | FlagsSetMask.PV);
+      f |= (result >> 8) & 0xff & (FlagsSetMask.R5 | FlagsSetMask.R3);
+      f |= (((ixVal & 0x0fff) + (regVal & 0x0fff)) >> 8) & FlagsSetMask.H;
+      if ((result & 0x10000) !== 0) {
+        f |= FlagsSetMask.C;
+      }
+      af = (a << 8) | f;
+      if (indexMode === OpIndexMode.IX) {
+        ix = result & 0xffff;
+        xh = ix >> 8;
+        xl = ix & 0xff;
+      } else {
+        iy = result & 0xffff;
+        yh = iy >> 8;
+        yl = iy & 0xff;
+      }
+      tacts += 3;
+    },
+
+    // 0x1a: LD A,(DE)
+    1,
+
+    // 0x1b: DEC DE
+    1,
+
+    // 0x1c: INC E
+    1,
+
+    // 0x1d: DEC E
+    1,
+
+    // 0x1e: LD E,N
+    1,
+
+    // 0x1f: RRA
+    1,
+
+    // 0x20: JR NZ,e
+    1,
+
+    // 0x21: LD IX,NN
+    () => {
+      const low = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      const nn = (memory.read(pc) << 8) | low;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if (indexMode === OpIndexMode.IX) {
+        ix = nn;
+        xh = ix >> 8;
+        xl = ix & 0xff;
+      } else {
+        iy = nn;
+        yh = iy >> 8;
+        yl = iy & 0xff;
+      }
+    },
+
+    // 0x22: LD (NN),IX / LD (NN),IY
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const low = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      const addr = (memory.read(pc) << 8) | low;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      memory.write(addr, ixVal & 0xff);
+      tacts += 3;
+      memory.write(wz, (ixVal >> 8) & 0xff);
+      tacts += 3;
+    },
+
+    // 0x23: INC IX / INC IY
+    () => {
+      if (indexMode == OpIndexMode.IX) {
+        ix = (ix + 1) & 0xffff;
+        xh = ix >> 8;
+        xl = ix & 0xff;
+      } else {
+        iy = (iy + 1) & 0xffff;
+        yh = iy >> 8;
+        yl = iy & 0xff;
+      }
+      tacts += 2;
+    },
+
+    // 0x24: INC IXH
+    () => {
+      if (indexMode == OpIndexMode.IX) {
+        xh = aluIncByte(xh);
+        ix = (xh << 8) | xl;
+      } else {
+        yh = aluIncByte(yh);
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x25: DEC IXH
+    () => {
+      if (indexMode == OpIndexMode.IX) {
+        xh = aluDecByte(xh);
+        ix = (xh << 8) | xl;
+      } else {
+        yh = aluDecByte(yh);
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x26: LD XH,N / LD YH/N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if (indexMode == OpIndexMode.IX) {
+        xh = val;
+        ix = (xh << 8) | xl;
+      } else {
+        yh = val;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x27: DAA
+    1,
+
+    // 0x28: JR Z,E
+    1,
+
+    // 0x29: ADD IX,IX / ADD IY,IY
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      wz = ixVal + 1;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 4;
+      const result = ixVal + ixVal;
+      f = f & (FlagsSetMask.S | FlagsSetMask.Z | FlagsSetMask.PV);
+      f |= (result >> 8) & 0xff & (FlagsSetMask.R5 | FlagsSetMask.R3);
+      f |= (((ixVal & 0x0fff) + (ixVal & 0x0fff)) >> 8) & FlagsSetMask.H;
+      if ((result & 0x10000) !== 0) {
+        f |= FlagsSetMask.C;
+      }
+      af = (a << 8) | f;
+      if (indexMode === OpIndexMode.IX) {
+        ix = result & 0xffff;
+        xh = ix >> 8;
+        xl = ix & 0xff;
+      } else {
+        iy = result & 0xffff;
+        yh = iy >> 8;
+        yl = iy & 0xff;
+      }
+      tacts += 3;
+    },
+
+    // 0x2a: LD IX,(NN) / LD IY,(NN)
+    () => {
+      const l = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      const addr = (memory.read(pc) << 8) | l;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      let val = memory.read(addr);
+      tacts += 3;
+      val += memory.read(wz) << 8;
+      tacts += 3;
+      if (indexMode === OpIndexMode.IX) {
+        ix = val;
+        xh = ix >> 8;
+        xl = ix & 0xff;
+      } else {
+        iy = val;
+        yh = iy >> 8;
+        yl = iy & 0xff;
+      }
+    },
+
+    // 0x2b: DEC IX / DEC IY
+    () => {
+      if (indexMode == OpIndexMode.IX) {
+        ix = (ix - 1) & 0xffff;
+        xh = ix >> 8;
+        xl = ix & 0xff;
+      } else {
+        iy = (iy - 1) & 0xffff;
+        yh = iy >> 8;
+        yl = iy & 0xff;
+      }
+      tacts += 2;
+    },
+
+    // 0x2c: INC XL
+    () => {
+      if (indexMode == OpIndexMode.IX) {
+        xl = aluIncByte(xl);
+        ix = (xh << 8) | xl;
+      } else {
+        yl = aluIncByte(yl);
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x2d: DEC XL
+    () => {
+      if (indexMode == OpIndexMode.IX) {
+        xl = aluDecByte(xl);
+        ix = (xh << 8) | xl;
+      } else {
+        yl = aluDecByte(yl);
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x2e: LD XL,N / LD YL,N
+    () => {
+      const val = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      if (indexMode == OpIndexMode.IX) {
+        xl = val;
+        ix = (xh << 8) | xl;
+      } else {
+        yl = val;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x2f: CPL
+    1,
+
+    // 0x30: JR NC,e
+    1,
+
+    // 0x31: LD SP,NNNN
+    1,
+
+    // 0x32: LD (NN),A
+    1,
+
+    // 0x33: INC SP
+    1,
+
+    // 0x34: INC (IX+d) / INC (IY+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      let memVal = memory.read(addr);
+      tacts += 3;
+      memVal = aluIncByte(memVal);
+      tacts++;
+      memory.write(addr, memVal);
+      tacts += 3;
+    },
+
+    // 0x35: DEC (IX+d) / DEC (IY+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      let memVal = memory.read(addr);
+      tacts += 3;
+      memVal = aluDecByte(memVal);
+      tacts++;
+      memory.write(addr, memVal);
+      tacts += 3;
+    },
+
+    // 0x36: LD (IX+d),N / LD (IY+d),N
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      const val = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 2;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      memory.write(addr, val);
+      tacts += 3;
+    },
+
+    // 0x37: SCF
+    1,
+
+    // 0x38: JR C,E
+    1,
+
+    // 0x39: ADD IX,SP / ADD IY,SP
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      wz = ixVal + 1;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      tacts += 4;
+      const regVal = sp;
+      const result = ixVal + regVal;
+      f = f & (FlagsSetMask.S | FlagsSetMask.Z | FlagsSetMask.PV);
+      f |= (result >> 8) & 0xff & (FlagsSetMask.R5 | FlagsSetMask.R3);
+      f |= (((ixVal & 0x0fff) + (regVal & 0x0fff)) >> 8) & FlagsSetMask.H;
+      if ((result & 0x10000) !== 0) {
+        f |= FlagsSetMask.C;
+      }
+      af = (a << 8) | f;
+      if (indexMode === OpIndexMode.IX) {
+        ix = result & 0xffff;
+        xh = ix >> 8;
+        xl = ix & 0xff;
+      } else {
+        iy = result & 0xffff;
+        yh = iy >> 8;
+        yl = iy & 0xff;
+      }
+      tacts += 3;
+    },
+
+    // 0x3a: LD A,(NN)
+    1,
+
+    // 0x3b: DEC SP
+    1,
+
+    // 0x3c: INC A
+    1,
+
+    // 0x3d: DEC A
+    1,
+
+    // 0x3e: LD A,N
+    1,
+
+    // 0x3f: CCF
+    1,
+
+  ];
 
   // --- Retrieve back the Z80 instance
   return {
@@ -3225,16 +3716,14 @@ export function z80CpuEngine(
   function aluIncByte(val: number): number {
     f = incOpFlags[val] | (f & FlagsSetMask.C);
     af = (a << 8) | f;
-    val++;
-    return val;
+    return (val + 1) & 0xff;
   }
 
   // Increments the specified value and sets F according to INC ALU logic
   function aluDecByte(val: number): number {
     f = decOpFlags[val] | (f & FlagsSetMask.C);
     af = (a << 8) | f;
-    val--;
-    return val;
+    return (val - 1) & 0xff;
   }
 
   // ==========================================================================
@@ -3249,13 +3738,21 @@ export function z80CpuEngine(
    * Process Z80 opcodes without a prefix, or with DD and FD prefix
    */
   function processStandardOrIndexedOperations(): void {
-    const opMethod =
-      indexMode === OpIndexMode.None
-        ? standardOperations[lastFethcedOpCode]
-        : indexedOperations[lastFethcedOpCode];
-    if (opMethod !== null) {
-      opMethod();
+    if (indexMode == OpIndexMode.None) {
+      const opMethod = standardOperations[lastFethcedOpCode];
+      if (opMethod) opMethod();
+      return;
     }
+
+    // -- DD or FD prefix
+    const opMethod = indexedOperations[lastFethcedOpCode];
+    if (typeof opMethod === "number") {
+      // --- Inherited standard operation
+      const opMethod = standardOperations[lastFethcedOpCode];
+      if (opMethod) opMethod();
+      return;
+    }
+    if (opMethod) opMethod();
   }
 
   /**
