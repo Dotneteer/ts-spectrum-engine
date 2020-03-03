@@ -3245,6 +3245,802 @@ export function z80CpuEngine(
     // 0x3f: CCF
     1,
 
+    // 0x40: LD B,B
+    1,
+
+    // 0x41: LD B,C
+    1,
+
+    // 0x42: LD B,D
+    1,
+
+    // 0x43: LD B,E
+    1,
+
+    // 0x44: LD B,XH
+    () => {
+      b = indexMode === OpIndexMode.IX ? xh : yh;
+      bc = (b << 8) | c;
+    },
+
+    // 0x45: LD B,XL
+    () => {
+      b = indexMode === OpIndexMode.IX ? xl : yl;
+      bc = (b << 8) | c;
+    },
+
+    // 0x46: LD B,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      b = memory.read(addr);
+      bc = (b << 8) | c;
+      tacts += 3;
+    },
+
+    // 0x47: LD B,A
+    1,
+
+    // 0x48: LD C,B
+    1,
+
+    // 0x49: LD C,C
+    1,
+
+    // 0x4a: LD C,D
+    1,
+
+    // 0x4b: LD C,E
+    1,
+
+    // 0x4c: LD C,XH
+    () => {
+      c = indexMode === OpIndexMode.IX ? xh : yh;
+      bc = (b << 8) | c;
+    },
+
+    // 0x4D: LD C,XL
+    () => {
+      c = indexMode === OpIndexMode.IX ? xl : yl;
+      bc = (b << 8) | c;
+    },
+
+    // 0x4E: LD C,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      c = memory.read(addr);
+      bc = (b << 8) | c;
+      tacts += 3;
+    },
+
+    // 0x4f: LD C,A
+    1,
+
+    // 0x50: LD D,B
+    1,
+
+    // 0x51: LD D,C
+    1,
+
+    // 0x52: LD D,D
+    1,
+
+    // 0x53: LD D,E
+    1,
+
+    // 0x54: LD D,XH
+    () => {
+      d = indexMode === OpIndexMode.IX ? xh : yh;
+      de = (d << 8) | e;
+    },
+
+    // 0x55: LD D,XL
+    () => {
+      d = indexMode === OpIndexMode.IX ? xl : yl;
+      de = (d << 8) | e;
+    },
+
+    // 0x56: LD D,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      d = memory.read(addr);
+      de = (d << 8) | e;
+      tacts += 3;
+    },
+
+    // 0x57: LD D,A
+    1,
+
+    // 0x58: LD E,B
+    1,
+
+    // 0x59: LD E,C
+    1,
+
+    // 0x5a: LD E,D
+    1,
+
+    // 0x5b: LD E,E
+    1,
+
+    // 0x5c: LD E,XH
+    () => {
+      e = indexMode === OpIndexMode.IX ? xh : yh;
+      de = (d << 8) | e;
+    },
+
+    // 0x5d: LD E,XL
+    () => {
+      e = indexMode === OpIndexMode.IX ? xl : yl;
+      de = (d << 8) | e;
+    },
+
+    // 0x5E: LD E,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      e = memory.read(addr);
+      de = (d << 8) | e;
+      tacts += 3;
+    },
+
+    // 0x5f: LD E,A
+    1,
+
+    // 0x60: LD XH,B
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xh = b;
+        ix = (xh << 8) | xl;
+      } else {
+        yh = b;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x61: LD XH,C
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xh = c;
+        ix = (xh << 8) | xl;
+      } else {
+        yh = c;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x62: LD XH,D
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xh = d;
+        ix = (xh << 8) | xl;
+      } else {
+        yh = d;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x63: LD XH,E
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xh = e;
+        ix = (xh << 8) | xl;
+      } else {
+        yh = e;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x64: LD XH,XH
+    null,
+
+    // 0x65: LD XH,XL
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xh = xl;
+        ix = (xh << 8) | xl;
+      } else {
+        yh = yl;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x66: LD H,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      h = memory.read(addr);
+      hl = (h << 8) | l;
+      tacts += 3;
+    },
+
+    // 0x67: LD XH,A
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xh = a;
+        ix = (xh << 8) | xl;
+      } else {
+        yh = a;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x68: LD XL,B
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xl = b;
+        ix = (xh << 8) | xl;
+      } else {
+        yl = b;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x69: LD XL,C
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xl = c;
+        ix = (xh << 8) | xl;
+      } else {
+        yl = c;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x6a: LD XL,D
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xl = d;
+        ix = (xh << 8) | xl;
+      } else {
+        yl = d;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x6b: LD XL,E
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xl = e;
+        ix = (xh << 8) | xl;
+      } else {
+        yl = e;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x6c: LD XL,XH
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xl = xh;
+        ix = (xh << 8) | xl;
+      } else {
+        yl = yh;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x6d: LD XL,XL
+    null,
+
+    // 0x6e: LD L,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      l = memory.read(addr);
+      hl = (h << 8) | l;
+      tacts += 3;
+    },
+
+    // 0x6f: LD XL,A
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        xl = a;
+        ix = (xh << 8) | xl;
+      } else {
+        yl = a;
+        iy = (yh << 8) | yl;
+      }
+    },
+
+    // 0x70: LD (IX+d),B
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      memory.write(addr, b);
+      tacts += 3;
+    },
+
+    // 0x71: LD (IX+d),C
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      memory.write(addr, c);
+      tacts += 3;
+    },
+
+    // 0x72: LD (IX+d),D
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      memory.write(addr, d);
+      tacts += 3;
+    },
+
+    // 0x73: LD (IX+d),E
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      memory.write(addr, e);
+      tacts += 3;
+    },
+
+    // 0x74: LD (IX+d),H
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      memory.write(addr, h);
+      tacts += 3;
+    },
+
+    // 0x75: LD (IX+d),L
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      memory.write(addr, l);
+      tacts += 3;
+    },
+
+    // 0x76: HALT
+    1,
+
+    // 0x77: LD (IX+d),A
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      memory.write(addr, a);
+      tacts += 3;
+    },
+
+    // 0x78: LD A,B
+    1,
+
+    // 0x79: LD A,C
+    1,
+
+    // 0x7a: LD A,D
+    1,
+
+    // 0x7b: LDA,E
+    1,
+
+    // 0x7c: LD A,XH
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        a = xh;
+      } else {
+        a = yh;
+      }
+      af = (a << 8) | f;
+    },
+
+    // 0x7d: LD A,XL
+    () => {
+      if (indexMode === OpIndexMode.IX) {
+        a = xl;
+      } else {
+        a = yl;
+      }
+      af = (a << 8) | f;
+    },
+
+    // 0x7e: LD A,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      a = memory.read(addr);
+      af = (a << 8) | f;
+      tacts += 3;
+    },
+
+    // 0x7f: LD A,A
+    1,
+
+    // 0x80: CCF
+    1,
+
+    // 0x81: CCF
+    1,
+
+    // 0x82: CCF
+    1,
+
+    // 0x83: CCF
+    1,
+
+    // 0x84: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1,
+
+    // 0x40: CCF
+    1
   ];
 
   // --- Retrieve back the Z80 instance
