@@ -4304,6 +4304,266 @@ export function z80CpuEngine(
     },
 
     // 0xbf: CP A
+    1,
+
+    // 0xc0: RET NZ
+    1,
+
+    // 0xc1: POP BC
+    1,
+
+    // 0xc2: JP NZ,NNNN
+    1,
+
+    // 0xc3: JP NNNN
+    1,
+
+    // 0xc4: CALL NZ,NNNN
+    1,
+
+    // 0xc5: PUSH BC
+    1,
+
+    // 0xc6: ADD A,N
+    1,
+
+    // 0xc7: RST 00
+    1,
+
+    // 0xc8: RET Z
+    1,
+
+    // 0xc9: RET
+    1,
+
+    // 0xca: JP Z,NNNN
+    1,
+
+    // 0xcb: Bit operation prefix
+    1,
+
+    // 0xcc: CALL Z,NNNN
+    1,
+
+    // 0xcd: CALL NNNN
+    1,
+
+    // 0xce: ADC A,N
+    1,
+
+    // 0xcf: RST 08
+    1,
+
+    // 0xd0: RET NC
+    1,
+
+    // 0xd1: POP DE
+    1,
+
+    // 0xd2: JP NC,NNNN
+    1,
+
+    // 0xd3: OUT (N),A
+    1,
+
+    // 0xd4: CALL NC,NNNN
+    1,
+
+    // 0xd5: PUSH DE
+    1,
+
+    // 0xd6: SUB N
+    1,
+
+    // 0xd7: RST 10
+    1,
+
+    // 0xd8: RET C
+    1,
+
+    // 0xd9: EXX
+    1,
+
+    // 0xda: JP C,NNNN
+    1,
+
+    // 0xdb: IN A,(N)
+    1,
+
+    // 0xdc: CALL C,NNNN
+    1,
+
+    // 0xdd: IX prefix
+    1,
+
+    // 0xde: SBC A,N
+    1,
+
+    // 0xdf: RST 18
+    1,
+
+    // 0xe0: RET PO
+    1,
+
+    // 0xe1: POP IX / POP IY
+    () => {
+      let val = memory.read(sp);
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      val += memory.read(sp) * 0x100;
+      tacts += 3;
+      sp = (sp + 1) & 0xffff;
+      if (indexMode === OpIndexMode.IX) {
+        ix = val;
+        xh = ix >> 8;
+        xl = ix & 0xff;
+      } else {
+        iy = val;
+        yh = iy >> 8;
+        yl = iy & 0xff;
+      }
+    },
+
+    // 0xe2: JP PO,NNNN
+    1,
+
+    // 0xe3: EX (SP),IX
+    () => {
+      let spLow = sp;
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const low = memory.read(spLow);
+      const spHigh = (sp + 1) & 0xffff;
+      tacts += 3;
+      const high = memory.read(spHigh);
+      if (useGateArrayContention) {
+        tacts += 4;
+      } else {
+        tacts += 3;
+        memory.read(spHigh);
+        tacts++;
+      }
+      memory.write(spHigh, ixVal >> 8);
+      tacts += 3;
+      memory.write(spLow, ixVal & 0xff);
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        tacts += 3;
+        memory.read(spLow);
+        tacts++;
+        memory.read(spLow);
+        tacts++;
+      }
+      wz = (high << 8) | low;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      if (indexMode === OpIndexMode.IX) {
+        ix = wz;
+        xh = wzh;
+        xl = wzl;
+      } else {
+        iy = wz;
+        yh = wzh;
+        yl = wzl;
+      }
+    },
+
+    // 0xe4: CALL PO,NNNN
+    1,
+
+    // 0xe5: PUSH IX
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      sp = (sp - 1) & 0xffff;
+      tacts++;
+      memory.write(sp, ixVal >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, ixVal & 0xff);
+      tacts += 3;
+    },
+
+    // 0xe6: AND N
+    1,
+
+    // 0xe7: RST 20
+    1,
+
+    // 0xe8: RET PE
+    1,
+
+    // 0xe9: JP (IX)
+    () => {
+      pc = indexMode === OpIndexMode.IX ? ix : iy;
+    },
+
+    // 0xea: JP PE,NNNN
+    1,
+
+    // 0xeb: EX DE,HL
+    1,
+
+    // 0xec: CALL PE,NNNN
+    1,
+
+    // 0xed: Extended instruction prefix
+    1,
+
+    // 0xee: XOR N
+    1,
+
+    // 0xef: RST 28
+    1,
+
+    // 0xf0: RET P
+    1,
+
+    // 0xf1: POP AF
+    1,
+
+    // 0xf2: JP P,NNNN
+    1,
+
+    // 0xf3: DI
+    1,
+
+    // 0xf4: CALL P,NNNN
+    1,
+
+    // 0xf5: PUSH AF
+    1,
+
+    // 0xf6: OR N
+    1,
+
+    // 0xf7: RST 30
+    1,
+
+    // 0xf8: RET M
+    1,
+
+    // 0xf9: LD SP,IX / LD SP, IY
+    () => {
+      sp = indexMode === OpIndexMode.IX ? ix : iy;
+      tacts += 2;
+    },
+
+    // 0xfa: JP M,NNNN
+    1,
+
+    // 0xfb: EI
+    1,
+
+    // 0xfc: CALL M,NNNN
+    1,
+
+    // 0xfd: IY prefix
+    1,
+
+    // 0xfe: CP N
+    1,
+
+    // 0xff: RST 38
     1
   ];
 
@@ -4855,7 +5115,7 @@ export function z80CpuEngine(
       flags |= FlagsSetMask.PV;
     }
     f = flags;
-    a = result &0xff;
+    a = result & 0xff;
     af = (a << 8) | f;
   }
 

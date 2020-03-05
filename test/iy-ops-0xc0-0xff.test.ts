@@ -1,8 +1,9 @@
 import "mocha";
 import * as expect from "expect";
 import { Z80TestMachine, RunMode } from "./Z80TestMachine";
+import { FlagsSetMask } from "../src/spectrumemu/cpu/FlagsSetMask";
 
-describe("Z80 CPU - standard c0-ff", () => {
+describe("Z80 CPU - IY-indexed c0-ff", () => {
   it("RET NZ", () => {
     // --- Arrange
     const m = new Z80TestMachine(RunMode.UntilHalt);
@@ -14,6 +15,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0xb7, // OR A
+      0xfd,
       0xc0, // RET NZ
       0x3e,
       0x24, // LD A,#24
@@ -31,7 +33,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(43);
+    expect(s.tacts).toBe(47);
   });
 
   it("RET NZ does not return when Z", () => {
@@ -45,6 +47,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0xb7, // OR A
+      0xfd,
       0xc0, // RET NZ
       0x3e,
       0x24, // LD A,#24
@@ -62,7 +65,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(54);
+    expect(s.tacts).toBe(58);
   });
 
   it("POP BC", () => {
@@ -73,6 +76,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x52,
       0x23, // LD HL,#2352
       0xe5, // PUSH HL
+      0xfd,
       0xc1 // POP BC
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -86,8 +90,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("HL, BC");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(31);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(35);
   });
 
   it("JP NZ,NN", () => {
@@ -97,9 +101,69 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xb7, // OR A
+      0xfd,
       0xc2,
-      0x07,
+      0x08,
+      0x00, // JP NZ,#0008
+      0x76, // HALT
+      0x3e,
+      0xaa, // LD A,#AA
+      0x76 // HALT
+    ]);
+
+    // --- Act
+    m.run();
+
+    // --- Assert
+    const s = m.cpu.getCpuState();
+    expect(s.a).toBe(0xaa);
+    m.shouldKeepRegisters("AF");
+    m.shouldKeepMemory();
+
+    expect(s.pc).toBe(0x000a);
+    expect(s.tacts).toBe(36);
+  });
+
+  it("JP NZ,NN does not jump when Z", () => {
+    // --- Arrange
+    const m = new Z80TestMachine(RunMode.UntilHalt);
+    m.initCode([
+      0x3e,
+      0x00, // LD A,#00
+      0xb7, // OR A
+      0xfd,
+      0xc2,
+      0x08,
       0x00, // JP NZ,#0007
+      0x76, // HALT
+      0x3e,
+      0xaa, // LD A,#AA
+      0x76 // HALT
+    ]);
+
+    // --- Act
+    m.run();
+
+    // --- Assert
+    const s = m.cpu.getCpuState();
+    expect(s.a).toBe(0x00);
+    m.shouldKeepRegisters("AF");
+    m.shouldKeepMemory();
+
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
+  });
+
+  it("JP NN", () => {
+    // --- Arrange
+    const m = new Z80TestMachine(RunMode.UntilHalt);
+    m.initCode([
+      0x3e,
+      0x16, // LD A,#16
+      0xfd,
+      0xc3,
+      0x07,
+      0x00, // JP #0006
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -119,63 +183,6 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s.tacts).toBe(32);
   });
 
-  it("JP NZ,NN does not jump when Z", () => {
-    // --- Arrange
-    const m = new Z80TestMachine(RunMode.UntilHalt);
-    m.initCode([
-      0x3e,
-      0x00, // LD A,#00
-      0xb7, // OR A
-      0xc2,
-      0x07,
-      0x00, // JP NZ,#0007
-      0x76, // HALT
-      0x3e,
-      0xaa, // LD A,#AA
-      0x76 // HALT
-    ]);
-
-    // --- Act
-    m.run();
-
-    // --- Assert
-    const s = m.cpu.getCpuState();
-    expect(s.a).toBe(0x00);
-    m.shouldKeepRegisters("AF");
-    m.shouldKeepMemory();
-
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
-  });
-
-  it("JP NN", () => {
-    // --- Arrange
-    const m = new Z80TestMachine(RunMode.UntilHalt);
-    m.initCode([
-      0x3e,
-      0x16, // LD A,#16
-      0xc3,
-      0x06,
-      0x00, // JP #0006
-      0x76, // HALT
-      0x3e,
-      0xaa, // LD A,#AA
-      0x76 // HALT
-    ]);
-
-    // --- Act
-    m.run();
-
-    // --- Assert
-    const s = m.cpu.getCpuState();
-    expect(s.a).toBe(0xaa);
-    m.shouldKeepRegisters("AF");
-    m.shouldKeepMemory();
-
-    expect(s.pc).toBe(0x0008);
-    expect(s.tacts).toBe(28);
-  });
-
   it("CALL NZ,NN", () => {
     // --- Arrange
     const m = new Z80TestMachine(RunMode.UntilHalt);
@@ -183,9 +190,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xb7, // OR A
+      0xfd,
       0xc4,
-      0x07,
-      0x00, // CALL NZ,#0007
+      0x08,
+      0x00, // CALL NZ,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -202,8 +210,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(49);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(53);
   });
 
   it("CALL NZ,NN does not call when Z", () => {
@@ -213,9 +221,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x00, // LD A,#00
       0xb7, // OR A
+      0xfd,
       0xc4,
-      0x07,
-      0x00, // CALL NZ,#0007
+      0x08,
+      0x00, // CALL NZ,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -232,8 +241,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("PUSH BC", () => {
@@ -243,6 +252,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x01,
       0x52,
       0x23, // LD BC,#2352
+      0xfd,
       0xc5, // PUSH BC
       0xe1 // POP HL
     ]);
@@ -257,8 +267,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("HL, BC");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(31);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(35);
   });
 
   it("ADD A,N works as expected", () => {
@@ -267,6 +277,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xc6,
       0x24 // ADD,#24
     ]);
@@ -289,8 +300,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0004);
-    expect(s.tacts).toBe(14);
+    expect(s.pc).toBe(0x0005);
+    expect(s.tacts).toBe(18);
   });
 
   it("RST #00", () => {
@@ -299,6 +310,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xc7 // RST #00
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -312,12 +324,12 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s.a).toBe(0x12);
     expect(s.sp).toBe(0xfffe);
     expect(s.pc).toBe(0);
-    expect(m.memory[0xfffe]).toBe(0x03);
+    expect(m.memory[0xfffe]).toBe(0x04);
     expect(m.memory[0xffff]).toBe(0x00);
     m.shouldKeepRegisters("SP");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.tacts).toBe(18);
+    expect(s.tacts).toBe(22);
   });
 
   it("RET Z", () => {
@@ -331,6 +343,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0xaf, // XOR A
+      0xfd,
       0xc8, // RET Z
       0x3e,
       0x24, // LD A,#24
@@ -348,7 +361,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(43);
+    expect(s.tacts).toBe(47);
   });
 
   it("RET Z does not return when NZ", () => {
@@ -362,6 +375,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0xb7, // OR A
+      0xfd,
       0xc8, // RET Z
       0x3e,
       0x24, // LD A,#24
@@ -379,7 +393,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(54);
+    expect(s.tacts).toBe(58);
   });
 
   it("RET", () => {
@@ -392,6 +406,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x06,
       0x00, // CALL #0006
       0x76, // HALT
+      0xfd,
       0xc9 // RET
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -405,7 +420,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(38);
+    expect(s.tacts).toBe(42);
   });
 
   it("JP Z,NN works as expected", () => {
@@ -415,9 +430,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xaf, // XOR A
+      0xfd,
       0xca,
-      0x07,
-      0x00, // JP Z,#0007
+      0x08,
+      0x00, // JP Z,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -433,8 +449,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0009);
-    expect(s.tacts).toBe(32);
+    expect(s.pc).toBe(0x000a);
+    expect(s.tacts).toBe(36);
   });
 
   it("JP Z,NN does not jump when NZ", () => {
@@ -444,9 +460,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xb7, // OR A
+      0xfd,
       0xca,
-      0x07,
-      0x00, // JP Z,#0007
+      0x08,
+      0x00, // JP Z,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -462,8 +479,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("CALL Z,NN", () => {
@@ -473,8 +490,9 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xaf, // XOR A
+      0xfd,
       0xcc,
-      0x07,
+      0x08,
       0x00, // CALL Z,#0007
       0x76, // HALT
       0x3e,
@@ -492,8 +510,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(49);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(53);
   });
 
   it("CALL Z,NN does not call when NZ", () => {
@@ -503,9 +521,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xb7, // OR A
+      0xfd,
       0xcc,
-      0x07,
-      0x00, // CALL Z,#0007
+      0x08,
+      0x00, // CALL Z,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -522,8 +541,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("CALL NN", () => {
@@ -532,9 +551,10 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x16, // LD A,#16
+      0xfd,
       0xcd,
-      0x06,
-      0x00, // CALL #0006
+      0x07,
+      0x00, // CALL #0007
       0x76, // HALT
       0x3e,
       0xa3, // LD A,#A3
@@ -551,8 +571,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(45);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(49);
   });
 
   it("ADC A,N", () => {
@@ -562,6 +582,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x12, // LD A,#12
       0x37, // SCF
+      0xfd,
       0xce,
       0x24 // ADC,#24
     ]);
@@ -584,8 +605,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(18);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(22);
   });
 
   it("RST #08", () => {
@@ -594,6 +615,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xcf // RST #08
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -607,12 +629,12 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s.a).toBe(0x12);
     expect(s.sp).toBe(0xfffe);
     expect(s.pc).toBe(8);
-    expect(m.memory[0xfffe]).toBe(0x03);
+    expect(m.memory[0xfffe]).toBe(0x04);
     expect(m.memory[0xffff]).toBe(0x00);
     m.shouldKeepRegisters("SP");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.tacts).toBe(18);
+    expect(s.tacts).toBe(22);
   });
 
   it("RET NC", () => {
@@ -626,6 +648,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0xa7, // AND A
+      0xfd,
       0xd0, // RET NC
       0x3e,
       0x24, // LD A,#24
@@ -643,7 +666,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(43);
+    expect(s.tacts).toBe(47);
   });
 
   it("RET NC does not return when C", () => {
@@ -657,6 +680,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x37, // SCF
+      0xfd,
       0xd0, // RET NC
       0x3e,
       0x24, // LD A,#24
@@ -674,7 +698,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(54);
+    expect(s.tacts).toBe(58);
   });
 
   it("POP DE", () => {
@@ -685,6 +709,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x52,
       0x23, // LD HL,#2352
       0xe5, // PUSH HL
+      0xfd,
       0xd1 // POP DE
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -698,8 +723,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("HL, DE");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(31);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(35);
   });
 
   it("JP NC,NN", () => {
@@ -709,9 +734,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xa7, // AND A
+      0xfd,
       0xd2,
-      0x07,
-      0x00, // JP NC,#0007
+      0x08,
+      0x00, // JP NC,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -727,8 +753,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0009);
-    expect(s.tacts).toBe(32);
+    expect(s.pc).toBe(0x000a);
+    expect(s.tacts).toBe(36);
   });
 
   it("JP NC,NN does not jump when C", () => {
@@ -738,9 +764,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0x37, // SCF
+      0xfd,
       0xd2,
-      0x07,
-      0x00, // JP NC,#0007
+      0x08,
+      0x00, // JP NC,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -756,8 +783,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("OUT (N),A works as expected", () => {
@@ -766,6 +793,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x16, // LD A,#16
+      0xfd,
       0xd3,
       0x28 // OUT (#28),A
     ]);
@@ -784,8 +812,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0004);
-    expect(s.tacts).toBe(18);
+    expect(s.pc).toBe(0x0005);
+    expect(s.tacts).toBe(22);
   });
 
   it("CALL NC,NN", () => {
@@ -795,9 +823,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xa7, // AND A
+      0xfd,
       0xd4,
-      0x07,
-      0x00, // CALL NC,#0007
+      0x08,
+      0x00, // CALL NC,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -814,8 +843,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(49);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(53);
   });
 
   it("CALL NC,NN does not call when C", () => {
@@ -825,9 +854,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0x37, // SCF
+      0xfd,
       0xd4,
-      0x07,
-      0x00, // CALL NC,#0007
+      0x08,
+      0x00, // CALL NC,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -844,8 +874,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("PUSH DE", () => {
@@ -855,6 +885,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x11,
       0x52,
       0x23, // LD DE,#2352
+      0xfd,
       0xd5, // PUSH DE
       0xe1 // POP HL
     ]);
@@ -869,8 +900,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("HL, DE");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(31);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(35);
   });
 
   it("SUB N", () => {
@@ -879,6 +910,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x36, // LD A,#36
+      0xfd,
       0xd6,
       0x24 // SUB #24
     ]);
@@ -901,8 +933,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0004);
-    expect(s.tacts).toBe(14);
+    expect(s.pc).toBe(0x0005);
+    expect(s.tacts).toBe(18);
   });
 
   it("RST #10", () => {
@@ -911,6 +943,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xd7 // RST #10
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -924,12 +957,12 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s.a).toBe(0x12);
     expect(s.sp).toBe(0xfffe);
     expect(s.pc).toBe(0x10);
-    expect(m.memory[0xfffe]).toBe(0x03);
+    expect(m.memory[0xfffe]).toBe(0x04);
     expect(m.memory[0xffff]).toBe(0x00);
     m.shouldKeepRegisters("SP");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.tacts).toBe(18);
+    expect(s.tacts).toBe(22);
   });
 
   it("RET C", () => {
@@ -943,6 +976,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x37, // SCF
+      0xfd,
       0xd8, // RET C
       0x3e,
       0x24, // LD A,#24
@@ -960,7 +994,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(43);
+    expect(s.tacts).toBe(47);
   });
 
   it("RET C does not return when NC", () => {
@@ -974,6 +1008,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0xb7, // OR A
+      0xfd,
       0xd8, // RET C
       0x3e,
       0x24, // LD A,#24
@@ -991,13 +1026,14 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(54);
+    expect(s.tacts).toBe(58);
   });
 
   it("EXX works as expected", () => {
     // --- Arrange
     var m = new Z80TestMachine(RunMode.OneInstruction);
     m.initCode([
+      0xfd,
       0xd9 // EXX
     ]);
     const sup = m.cpu.getTestSupport();
@@ -1021,9 +1057,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s._hl_).toBe(0xcdef);
 
     m.shouldKeepMemory();
-
-    expect(s.pc).toBe(0x0001);
-    expect(s.tacts).toBe(4);
+    expect(s.pc).toBe(0x0002);
+    expect(s.tacts).toBe(8);
   });
 
   it("JP C,NN", () => {
@@ -1033,9 +1068,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0x37, // SCF
+      0xfd,
       0xda,
-      0x07,
-      0x00, // JP C,#0007
+      0x08,
+      0x00, // JP C,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -1051,8 +1087,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0009);
-    expect(s.tacts).toBe(32);
+    expect(s.pc).toBe(0x000a);
+    expect(s.tacts).toBe(36);
   });
 
   it("JP C,NN does not jump when NC", () => {
@@ -1062,9 +1098,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xb7, // OR A
+      0xfd,
       0xda,
-      0x07,
-      0x00, // JP C,#0007
+      0x08,
+      0x00, // JP C,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -1080,8 +1117,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("IN A,(N)", () => {
@@ -1090,6 +1127,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x16, // LD A,#16
+      0xfd,
       0xdb,
       0x34 // IN A,(#34)
     ]);
@@ -1109,8 +1147,8 @@ describe("Z80 CPU - standard c0-ff", () => {
 
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0004);
-    expect(s.tacts).toBe(18);
+    expect(s.pc).toBe(0x0005);
+    expect(s.tacts).toBe(22);
   });
 
   it("CALL C,NN", () => {
@@ -1120,9 +1158,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0x37, // SCF
+      0xfd,
       0xdc,
-      0x07,
-      0x00, // CALL C,#0007
+      0x08,
+      0x00, // CALL C,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -1139,8 +1178,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(49);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(53);
   });
 
   it("CALL C,NN does not call when NC", () => {
@@ -1150,9 +1189,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x16, // LD A,#16
       0xb7, // OR A
+      0xfd,
       0xdc,
-      0x07,
-      0x00, // CALL C,#0007
+      0x08,
+      0x00, // CALL C,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -1169,8 +1209,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("SBC N", () => {
@@ -1180,6 +1220,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x36, // LD A,36H
       0x37, // SCF
+      0xfd,
       0xde,
       0x24 // SBC 24H
     ]);
@@ -1202,8 +1243,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(18);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(22);
   });
 
   it("RST #18", () => {
@@ -1212,6 +1253,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xdf // RST #18
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -1225,12 +1267,12 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s.a).toBe(0x12);
     expect(s.sp).toBe(0xfffe);
     expect(s.pc).toBe(0x18);
-    expect(m.memory[0xfffe]).toBe(0x03);
+    expect(m.memory[0xfffe]).toBe(0x04);
     expect(m.memory[0xffff]).toBe(0x00);
     m.shouldKeepRegisters("SP");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.tacts).toBe(18);
+    expect(s.tacts).toBe(22);
   });
 
   it("RET PO", () => {
@@ -1244,6 +1286,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x87, // ADD A
+      0xfd,
       0xe0, // RET PO
       0x3e,
       0x24, // LD A,#24
@@ -1261,7 +1304,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(43);
+    expect(s.tacts).toBe(47);
   });
 
   it("RET PO does not return when PE", () => {
@@ -1275,6 +1318,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x87, // ADD A
+      0xfd,
       0xe0, // RET PO
       0x3e,
       0x24, // LD A,#24
@@ -1292,18 +1336,19 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(54);
+    expect(s.tacts).toBe(58);
   });
 
-  it("POP HL", () => {
+  it("POP IY works as expected", () => {
     // --- Arrange
     const m = new Z80TestMachine(RunMode.UntilEnd);
     m.initCode([
-      0x01,
+      0x21,
       0x52,
-      0x23, // LD BC,#2352
-      0xc5, // PUSH BC
-      0xe1 // POP HL
+      0x23, // LD HL,#2352
+      0xe5, // PUSH HL
+      0xfd,
+      0xe1 // POP IY
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
 
@@ -1312,12 +1357,13 @@ describe("Z80 CPU - standard c0-ff", () => {
 
     // --- Assert
     const s = m.cpu.getCpuState();
-    expect(s.hl).toBe(0x2352);
-    m.shouldKeepRegisters("HL, BC");
+    expect(s.iy).toBe(0x2352);
+
+    m.shouldKeepRegisters("IY, HL");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(31);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(35);
   });
 
   it("JP PO,NN", () => {
@@ -1327,9 +1373,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x2a, // LD A,#2A
       0x87, // ADD A
+      0xfd,
       0xe2,
-      0x07,
-      0x00, // JP PO,#0007
+      0x08,
+      0x00, // JP PO,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -1345,8 +1392,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0009);
-    expect(s.tacts).toBe(32);
+    expect(s.pc).toBe(0x000a);
+    expect(s.tacts).toBe(36);
   });
 
   it("JP PO,NN does not jump when PE", () => {
@@ -1356,9 +1403,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x88, // LD A,#88
       0x87, // ADD A
+      0xfd,
       0xe2,
-      0x07,
-      0x00, // JP PO,#0007
+      0x08,
+      0x00, // JP PO,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -1374,23 +1422,25 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
-  it("EX (SP),HL works as expected", () => {
+  it("EX (SP),IY", () => {
     // --- Arrange
-    var m = new Z80TestMachine(RunMode.UntilEnd);
+    const m = new Z80TestMachine(RunMode.UntilEnd);
     m.initCode([
       0x31,
       0x00,
-      0x10, // LD SP,#1000
+      0x10, // LD SP, #1000
+      0xfd,
       0x21,
       0x34,
-      0x12, // LD HL,#1234
-      0xe3 // EX (SP),HL
+      0x12, // LD IY,#1234
+      0xfd,
+      0xe3 // EX (SP),IY
     ]);
-    m.cpu.getTestSupport().setSP(0x0000);
+    m.cpu.getTestSupport().setSP(0x000);
     m.memory[0x1000] = 0x78;
     m.memory[0x1001] = 0x56;
 
@@ -1399,16 +1449,15 @@ describe("Z80 CPU - standard c0-ff", () => {
 
     // --- Assert
     const s = m.cpu.getCpuState();
-
-    expect(s.hl).toBe(0x5678);
+    expect(s.iy).toBe(0x5678);
     expect(m.memory[0x1000]).toBe(0x34);
     expect(m.memory[0x1001]).toBe(0x12);
 
-    m.shouldKeepRegisters("SP, HL");
+    m.shouldKeepRegisters("SP, IY");
     m.shouldKeepMemory("1000-1001");
 
-    expect(s.pc).toBe(0x0007);
-    expect(s.tacts).toBe(39);
+    expect(s.pc).toBe(0x0009);
+    expect(s.tacts).toBe(47);
   });
 
   it("CALL PO,NN", () => {
@@ -1418,9 +1467,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x2a, // LD A,#2A
       0x87, // ADD A
+      0xfd,
       0xe4,
-      0x07,
-      0x00, // CALL PO,#0007
+      0x08,
+      0x00, // CALL PO,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -1437,8 +1487,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(49);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(53);
   });
 
   it("CALL PO,NN does not call when PE", () => {
@@ -1448,9 +1498,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x88, // LD A,#88
       0x87, // ADD A
+      0xfd,
       0xe4,
-      0x07,
-      0x00, // CALL PO,#0007
+      0x08,
+      0x00, // CALL PO,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -1467,18 +1518,20 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
-  it("PUSH HL", () => {
+  it("PUSH IY", () => {
     // --- Arrange
     const m = new Z80TestMachine(RunMode.UntilEnd);
     m.initCode([
+      0xfd,
       0x21,
       0x52,
-      0x23, // LD HL,#2352
-      0xe5, // PUSH HL
+      0x23, // LD IY,#2352
+      0xfd,
+      0xe5, // PUSH IY
       0xc1 // POP BC
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -1489,11 +1542,12 @@ describe("Z80 CPU - standard c0-ff", () => {
     // --- Assert
     const s = m.cpu.getCpuState();
     expect(s.bc).toBe(0x2352);
-    m.shouldKeepRegisters("HL, BC");
+
+    m.shouldKeepRegisters("IY, BC");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(31);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(39);
   });
 
   it("AND N", () => {
@@ -1502,6 +1556,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xe6,
       0x23 // AND #23
     ]);
@@ -1524,8 +1579,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0004);
-    expect(s.tacts).toBe(14);
+    expect(s.pc).toBe(0x0005);
+    expect(s.tacts).toBe(18);
   });
 
   it("RST #20", () => {
@@ -1534,6 +1589,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xe7 // RST #20
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -1547,12 +1603,12 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s.a).toBe(0x12);
     expect(s.sp).toBe(0xfffe);
     expect(s.pc).toBe(0x20);
-    expect(m.memory[0xfffe]).toBe(0x03);
+    expect(m.memory[0xfffe]).toBe(0x04);
     expect(m.memory[0xffff]).toBe(0x00);
     m.shouldKeepRegisters("SP");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.tacts).toBe(18);
+    expect(s.tacts).toBe(22);
   });
 
   it("RET PE", () => {
@@ -1566,6 +1622,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x87, // ADD A
+      0xfd,
       0xe8, // RET PE
       0x3e,
       0x24, // LD A,#24
@@ -1583,7 +1640,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(43);
+    expect(s.tacts).toBe(47);
   });
 
   it("RET PE does not return when PO", () => {
@@ -1597,6 +1654,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x87, // ADD A
+      0xfd,
       0xe8, // RET PE
       0x3e,
       0x24, // LD A,#24
@@ -1614,17 +1672,19 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(54);
+    expect(s.tacts).toBe(58);
   });
 
-  it("JP (HL)", () => {
+  it("JP (IY)", () => {
     // --- Arrange
-    var m = new Z80TestMachine(RunMode.UntilEnd);
+    const m = new Z80TestMachine(RunMode.UntilEnd);
     m.initCode([
+      0xfd,
       0x21,
       0x00,
-      0x10, // LD HL,#1000
-      0xe9 // JP (HL)
+      0x10, // LD IY, #1000
+      0xfd,
+      0xe9 // JP (IY)
     ]);
 
     // --- Act
@@ -1632,24 +1692,24 @@ describe("Z80 CPU - standard c0-ff", () => {
 
     // --- Assert
     const s = m.cpu.getCpuState();
-
-    m.shouldKeepRegisters("HL");
+    m.shouldKeepRegisters("IY");
     m.shouldKeepMemory();
 
     expect(s.pc).toBe(0x1000);
-    expect(s.tacts).toBe(14);
+    expect(s.tacts).toBe(22);
   });
 
-  it("JP PE,NN works as expected", () => {
+  it("JP PE,NN", () => {
     // --- Arrange
     const m = new Z80TestMachine(RunMode.UntilHalt);
     m.initCode([
       0x3e,
       0x88, // LD A,#88
       0x87, // ADD A
+      0xfd,
       0xea,
-      0x07,
-      0x00, // JP PE,#0007
+      0x08,
+      0x00, // JP PE,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -1665,8 +1725,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0009);
-    expect(s.tacts).toBe(32);
+    expect(s.pc).toBe(0x000a);
+    expect(s.tacts).toBe(36);
   });
 
   it("JP PE,NN does not jump when PO", () => {
@@ -1676,9 +1736,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x2a, // LD A,#2A
       0x87, // ADD A
+      0xfd,
       0xea,
-      0x07,
-      0x00, // JP PE,#0007
+      0x08,
+      0x00, // JP PE,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -1694,8 +1755,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("EX DE,HL", () => {
@@ -1708,6 +1769,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x11,
       0x78,
       0x56, // LD DE,5678H
+      0xfd,
       0xeb // EX DE,HL
     ]);
 
@@ -1723,8 +1785,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("HL, DE");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0007);
-    expect(s.tacts).toBe(24);
+    expect(s.pc).toBe(0x0008);
+    expect(s.tacts).toBe(28);
   });
 
   it("CALL PE,NN", () => {
@@ -1734,9 +1796,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x88, // LD A,#88
       0x87, // ADD A
+      0xfd,
       0xec,
-      0x07,
-      0x00, // CALL PE,#0007
+      0x08,
+      0x00, // CALL PE,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -1753,8 +1816,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(49);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(53);
   });
 
   it("CALL PE,NN does not call when PO", () => {
@@ -1764,9 +1827,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x2a, // LD A,#2A
       0x87, // ADD A
+      0xfd,
       0xec,
-      0x07,
-      0x00, // CALL PE,#0007
+      0x08,
+      0x00, // CALL PE,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -1783,8 +1847,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("XOR N", () => {
@@ -1793,6 +1857,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xee,
       0x23 // XOR #23
     ]);
@@ -1815,8 +1880,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0004);
-    expect(s.tacts).toBe(14);
+    expect(s.pc).toBe(0x0005);
+    expect(s.tacts).toBe(18);
   });
 
   it("RST #28 works as expected", () => {
@@ -1825,6 +1890,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xef // RST #28
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -1838,12 +1904,12 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s.a).toBe(0x12);
     expect(s.sp).toBe(0xfffe);
     expect(s.pc).toBe(0x28);
-    expect(m.memory[0xfffe]).toBe(0x03);
+    expect(m.memory[0xfffe]).toBe(0x04);
     expect(m.memory[0xffff]).toBe(0x00);
     m.shouldKeepRegisters("SP");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.tacts).toBe(18);
+    expect(s.tacts).toBe(22);
   });
 
   it("RET P", () => {
@@ -1857,6 +1923,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x87, // ADD A
+      0xfd,
       0xf0, // RET P
       0x3e,
       0x24, // LD A,#24
@@ -1874,7 +1941,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(43);
+    expect(s.tacts).toBe(47);
   });
 
   it("RET P does not return when M", () => {
@@ -1888,6 +1955,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x87, // ADD A
+      0xfd,
       0xf0, // RET P
       0x3e,
       0x24, // LD A,#24
@@ -1905,7 +1973,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(54);
+    expect(s.tacts).toBe(58);
   });
 
   it("POP AF", () => {
@@ -1916,6 +1984,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x52,
       0x23, // LD BC,#2352
       0xc5, // PUSH BC
+      0xfd,
       0xf1 // POP AF
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -1929,8 +1998,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF, BC");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(31);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(35);
   });
 
   it("JP P,NN", () => {
@@ -1940,9 +2009,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x32, // LD A,#32
       0x87, // ADD A
+      0xfd,
       0xf2,
-      0x07,
-      0x00, // JP P,#0007
+      0x08,
+      0x00, // JP P,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -1958,8 +2028,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0009);
-    expect(s.tacts).toBe(32);
+    expect(s.pc).toBe(0x000a);
+    expect(s.tacts).toBe(36);
   });
 
   it("JP P,NN does not jump when M", () => {
@@ -1969,9 +2039,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0xc0, // LD A,#C0
       0x87, // ADD A
+      0xfd,
       0xf2,
-      0x07,
-      0x00, // JP P,#0007
+      0x08,
+      0x00, // JP P,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -1987,14 +2058,15 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("DI", () => {
     // --- Arrange
     var m = new Z80TestMachine(RunMode.OneInstruction);
     m.initCode([
+      0xfd,
       0xf3 // DI
     ]);
 
@@ -2010,8 +2082,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters();
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0001);
-    expect(s.tacts).toBe(4);
+    expect(s.pc).toBe(0x0002);
+    expect(s.tacts).toBe(8);
   });
 
   it("CALL P,NN works as expected", () => {
@@ -2021,9 +2093,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x32, // LD A,#32
       0x87, // ADD A
+      0xfd,
       0xf4,
-      0x07,
-      0x00, // CALL P,#0007
+      0x08,
+      0x00, // CALL P,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -2040,8 +2113,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(49);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(53);
   });
 
   it("CALL P,NN does not call when M", () => {
@@ -2051,9 +2124,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0xc0, // LD A,#C0
       0x87, // ADD A
+      0xfd,
       0xf4,
-      0x07,
-      0x00, // CALL P,#000H
+      0x08,
+      0x00, // CALL P,#0008
       0x76, // HALT
       0x3e,
       0x24, // LD A,#24
@@ -2070,14 +2144,15 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("PUSH AF", () => {
     // --- Arrange
     const m = new Z80TestMachine(RunMode.UntilEnd);
     m.initCode([
+      0xfd,
       0xf5, // PUSH AF
       0xc1 // POP BC
     ]);
@@ -2094,8 +2169,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("BC");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0002);
-    expect(s.tacts).toBe(21);
+    expect(s.pc).toBe(0x0003);
+    expect(s.tacts).toBe(25);
   });
 
   it("OR N", () => {
@@ -2104,6 +2179,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xf6,
       0x23 // OR #23
     ]);
@@ -2126,8 +2202,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0004);
-    expect(s.tacts).toBe(14);
+    expect(s.pc).toBe(0x0005);
+    expect(s.tacts).toBe(18);
   });
 
   it("RST #30", () => {
@@ -2136,6 +2212,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xf7 // RST #30
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -2149,12 +2226,12 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s.a).toBe(0x12);
     expect(s.sp).toBe(0xfffe);
     expect(s.pc).toBe(0x30);
-    expect(m.memory[0xfffe]).toBe(0x03);
+    expect(m.memory[0xfffe]).toBe(0x04);
     expect(m.memory[0xffff]).toBe(0x00);
     m.shouldKeepRegisters("SP");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.tacts).toBe(18);
+    expect(s.tacts).toBe(22);
   });
 
   it("RET M", () => {
@@ -2168,6 +2245,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x87, // ADD A
+      0xfd,
       0xf8, // RET M
       0x3e,
       0x24, // LD A,#24
@@ -2185,7 +2263,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(43);
+    expect(s.tacts).toBe(47);
   });
 
   it("RET M does not return when M", () => {
@@ -2199,6 +2277,7 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x00, // CALL #0006
       0x76, // HALT
       0x87, // ADD A
+      0xfd,
       0xf8, // RET M
       0x3e,
       0x24, // LD A,#24
@@ -2216,17 +2295,19 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepMemory("FFFE-FFFF");
 
     expect(s.pc).toBe(0x0005);
-    expect(s.tacts).toBe(54);
+    expect(s.tacts).toBe(58);
   });
 
-  it("LD SP,HL works as expected", () => {
+  it("LD SP, IY works as expected", () => {
     // --- Arrange
-    var m = new Z80TestMachine(RunMode.UntilEnd);
+    const m = new Z80TestMachine(RunMode.UntilEnd);
     m.initCode([
+      0xfd,
       0x21,
       0x00,
-      0x10, // LD HL,#1000
-      0xf9 // LD SP,HL
+      0x10, // LD IY,#1000
+      0xfd,
+      0xf9 // LD SP,IY
     ]);
 
     // --- Act
@@ -2234,14 +2315,13 @@ describe("Z80 CPU - standard c0-ff", () => {
 
     // --- Assert
     const s = m.cpu.getCpuState();
-
     expect(s.sp).toBe(0x1000);
 
-    m.shouldKeepRegisters("HL, SP");
-    m.shouldKeepMemory();
+    m.shouldKeepRegisters("IY, SP");
+    m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.pc).toBe(0x0004);
-    expect(s.tacts).toBe(16);
+    expect(s.pc).toBe(0x0006);
+    expect(s.tacts).toBe(24);
   });
 
   it("JP M,NN", () => {
@@ -2251,9 +2331,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0xc0, // LD A,#C0
       0x87, // ADD A
+      0xfd,
       0xfa,
-      0x07,
-      0x00, // JP M,#0007
+      0x08,
+      0x00, // JP M,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -2269,8 +2350,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0009);
-    expect(s.tacts).toBe(32);
+    expect(s.pc).toBe(0x000a);
+    expect(s.tacts).toBe(36);
   });
 
   it("JP M,NN does not jump when P", () => {
@@ -2280,9 +2361,10 @@ describe("Z80 CPU - standard c0-ff", () => {
       0x3e,
       0x32, // LD A,#32
       0x87, // ADD A
+      0xfd,
       0xfa,
-      0x07,
-      0x00, // JP M,#0007
+      0x08,
+      0x00, // JP M,#0008
       0x76, // HALT
       0x3e,
       0xaa, // LD A,#AA
@@ -2298,14 +2380,15 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("AF");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0006);
-    expect(s.tacts).toBe(25);
+    expect(s.pc).toBe(0x0007);
+    expect(s.tacts).toBe(29);
   });
 
   it("EI works as expected", () => {
     // --- Arrange
     var m = new Z80TestMachine(RunMode.OneInstruction);
     m.initCode([
+      0xfd,
       0xfb // EI
     ]);
 
@@ -2322,14 +2405,15 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters();
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0001);
-    expect(s.tacts).toBe(4);
+    expect(s.pc).toBe(0x0002);
+    expect(s.tacts).toBe(8);
   });
 
   it("CP N", () => {
     // --- Arrange
     var m = new Z80TestMachine(RunMode.UntilEnd);
     m.initCode([
+      0xfd,
       0xfe,
       0x24 // CP 24H
     ]);
@@ -2352,8 +2436,8 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.shouldKeepRegisters("F");
     m.shouldKeepMemory();
 
-    expect(s.pc).toBe(0x0002);
-    expect(s.tacts).toBe(7);
+    expect(s.pc).toBe(0x0003);
+    expect(s.tacts).toBe(11);
   });
 
   it("RST #38", () => {
@@ -2362,6 +2446,7 @@ describe("Z80 CPU - standard c0-ff", () => {
     m.initCode([
       0x3e,
       0x12, // LD A,#12
+      0xfd,
       0xff // RST #38
     ]);
     m.cpu.getTestSupport().setSP(0x0000);
@@ -2375,11 +2460,11 @@ describe("Z80 CPU - standard c0-ff", () => {
     expect(s.a).toBe(0x12);
     expect(s.sp).toBe(0xfffe);
     expect(s.pc).toBe(0x38);
-    expect(m.memory[0xfffe]).toBe(0x03);
+    expect(m.memory[0xfffe]).toBe(0x04);
     expect(m.memory[0xffff]).toBe(0x00);
     m.shouldKeepRegisters("SP");
     m.shouldKeepMemory("FFFE-FFFF");
 
-    expect(s.tacts).toBe(18);
+    expect(s.tacts).toBe(22);
   });
 });
