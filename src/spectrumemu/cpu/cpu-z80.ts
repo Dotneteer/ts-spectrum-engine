@@ -3886,160 +3886,424 @@ export function z80CpuEngine(
     // 0x7f: LD A,A
     1,
 
-    // 0x80: CCF
+    // 0x80: ADD A,B
     1,
 
-    // 0x81: CCF
+    // 0x81: ADD A,C
     1,
 
-    // 0x82: CCF
+    // 0x82: ADD A,D
     1,
 
-    // 0x83: CCF
+    // 0x83: ADD A,E
     1,
 
-    // 0x84: CCF
+    // 0x84: ADD A,XH
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xh : yh;
+      f = adcFlags[(a << 8) + xVal];
+      a = (a + xVal) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x85: ADD A,XL
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xl : yl;
+      f = adcFlags[(a << 8) + xVal];
+      a = (a + xVal) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x86: ADD A,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      aluAlgorithms[0](memory.read(addr), (f & FlagsSetMask.C) !== 0);
+      tacts += 3;
+    },
+
+    // 0x87: ADD A,A
     1,
 
-    // 0x40: CCF
+    // 0x88: ADC A,B
     1,
 
-    // 0x40: CCF
+    // 0x89: ADC A,C
     1,
 
-    // 0x40: CCF
+    // 0x8a: ADC A,D
     1,
 
-    // 0x40: CCF
+    // 0x8b: ADC A,E
     1,
 
-    // 0x40: CCF
+    // 0x8c: ADC A,XH
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xh : yh;
+      aluAlgorithms[1](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0x8d: ADC A,XL
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xl : yl;
+      aluAlgorithms[1](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0x8e: ADC A,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      aluAlgorithms[1](memory.read(addr), (f & FlagsSetMask.C) !== 0);
+      tacts += 3;
+    },
+
+    // 0x8f: ADC A,A
     1,
 
-    // 0x40: CCF
+    // 0x90: SUB B
     1,
 
-    // 0x40: CCF
+    // 0x91: SUB C
     1,
 
-    // 0x40: CCF
+    // 0x92: SUB D
     1,
 
-    // 0x40: CCF
+    // 0x93: SUB E
     1,
 
-    // 0x40: CCF
+    // 0x94: SUB XH
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xh : yh;
+      aluAlgorithms[2](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0x95: SUB XL
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xl : yl;
+      aluAlgorithms[2](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0x96: SUB (IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      aluAlgorithms[2](memory.read(addr), (f & FlagsSetMask.C) !== 0);
+      tacts += 3;
+    },
+
+    // 0x97: SUB A
     1,
 
-    // 0x40: CCF
+    // 0x98: SBC A,B
     1,
 
-    // 0x40: CCF
+    // 0x99: SBC A,C
     1,
 
-    // 0x40: CCF
+    // 0x9a: SBC A,D
     1,
 
-    // 0x40: CCF
+    // 0x9b: SBC A,E
     1,
 
-    // 0x40: CCF
+    // 0x9c: SBC A,XH
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xh : yh;
+      aluAlgorithms[3](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0x9d: SBC A,XL
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xl : yl;
+      aluAlgorithms[3](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0x9e: SBC A,(IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      aluAlgorithms[3](memory.read(addr), (f & FlagsSetMask.C) !== 0);
+      tacts += 3;
+    },
+
+    // 0x9f: SBC A,A
     1,
 
-    // 0x40: CCF
+    // 0xa0: AND B
     1,
 
-    // 0x40: CCF
+    // 0xa1: AND C
     1,
 
-    // 0x40: CCF
+    // 0xa2: AND D
     1,
 
-    // 0x40: CCF
+    // 0xa3: AND E
     1,
 
-    // 0x40: CCF
+    // 0xa4: AND XH
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xh : yh;
+      aluAlgorithms[4](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0xa5: AND XL
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xl : yl;
+      aluAlgorithms[4](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0xa6: AND (IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      aluAlgorithms[4](memory.read(addr), (f & FlagsSetMask.C) !== 0);
+      tacts += 3;
+    },
+
+    // 0xa7: AND A
     1,
 
-    // 0x40: CCF
+    // 0xa8: XOR B
     1,
 
-    // 0x40: CCF
+    // 0xa9: XOR C
     1,
 
-    // 0x40: CCF
+    // 0xaa: XOR D
     1,
 
-    // 0x40: CCF
+    // 0xab: XOR E
     1,
 
-    // 0x40: CCF
+    // 0xac: XOR XH
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xh : yh;
+      aluAlgorithms[5](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0xad: XOR XL
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xl : yl;
+      aluAlgorithms[5](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0xae: XOR (IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      aluAlgorithms[5](memory.read(addr), (f & FlagsSetMask.C) !== 0);
+      tacts += 3;
+    },
+
+    // 0xaf: XOR A
     1,
 
-    // 0x40: CCF
+    // 0xb0: OR B
     1,
 
-    // 0x40: CCF
+    // 0xb1: OR C
     1,
 
-    // 0x40: CCF
+    // 0xb2: OR D
     1,
 
-    // 0x40: CCF
+    // 0xb3: OR E
     1,
 
-    // 0x40: CCF
+    // 0xb4: OR XH
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xh : yh;
+      aluAlgorithms[6](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0xb5: OR XL
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xl : yl;
+      aluAlgorithms[6](xVal, (f & FlagsSetMask.C) !== 0);
+    },
+
+    // 0xb6: OR (IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      aluAlgorithms[6](memory.read(addr), (f & FlagsSetMask.C) !== 0);
+      tacts += 3;
+    },
+
+    // 0xb7: OR A
     1,
 
-    // 0x40: CCF
+    // 0xb8: CP B
     1,
 
-    // 0x40: CCF
+    // 0xb9: CP C
     1,
 
-    // 0x40: CCF
+    // 0xba: CP D
     1,
 
-    // 0x40: CCF
+    // 0xbb: CP E
     1,
 
-    // 0x40: CCF
-    1,
+    // 0xbc: CP XH
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xh : yh;
+      aluAlgorithms[7](xVal, (f & FlagsSetMask.C) !== 0);
+    },
 
-    // 0x40: CCF
-    1,
+    // 0xbd: CP XL
+    () => {
+      const xVal = indexMode === OpIndexMode.IX ? xl : yl;
+      aluAlgorithms[7](xVal, (f & FlagsSetMask.C) !== 0);
+    },
 
-    // 0x40: CCF
-    1,
+    // 0xbe: CP (IX+d)
+    () => {
+      const ixVal = indexMode === OpIndexMode.IX ? ix : iy;
+      const offset = memory.read(pc);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      } else {
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+        memory.read(pc);
+        tacts++;
+      }
+      pc = (pc + 1) & 0xffff;
+      const addr = (ixVal + toSbyte(offset)) & 0xffff;
+      aluAlgorithms[7](memory.read(addr), (f & FlagsSetMask.C) !== 0);
+      tacts += 3;
+    },
 
-    // 0x40: CCF
-    1,
-
-    // 0x40: CCF
-    1,
-
-    // 0x40: CCF
-    1,
-
-    // 0x40: CCF
-    1,
-
-    // 0x40: CCF
-    1,
-
-    // 0x40: CCF
-    1,
-
-    // 0x40: CCF
-    1,
-
-    // 0x40: CCF
-    1,
-
-    // 0x40: CCF
-    1,
-
-    // 0x40: CCF
+    // 0xbf: CP A
     1
   ];
 
@@ -4591,7 +4855,7 @@ export function z80CpuEngine(
       flags |= FlagsSetMask.PV;
     }
     f = flags;
-    a = result;
+    a = result &0xff;
     af = (a << 8) | f;
   }
 
@@ -4623,27 +4887,27 @@ export function z80CpuEngine(
       flags |= FlagsSetMask.PV;
     }
     f = flags;
-    a = result;
+    a = result & 0xff;
     af = (a << 8) | f;
   }
 
   // Executes the AND operation.
   function AluAND(right: number, cf: boolean) {
-    a &= right;
+    a &= right & 0xff;
     f = aluLogOpFlags[a] | FlagsSetMask.H;
     af = (a << 8) | f;
   }
 
   // Executes the XOR operation.
   function AluXOR(right: number, cf: boolean) {
-    a ^= right;
+    a ^= right & 0xff;
     f = aluLogOpFlags[a];
     af = (a << 8) | f;
   }
 
   // Executes the OR operation.
   function AluOR(right: number, cf: boolean) {
-    a |= right;
+    a |= right & 0xff;
     f = aluLogOpFlags[a];
     af = (a << 8) | f;
   }
