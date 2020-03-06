@@ -92,6 +92,8 @@ export interface Z80CpuTestSupport {
   setYL(value: number): void;
   setIY(value: number): void;
   setWZ(value: number): void;
+  setIff1(value: boolean): void;
+  setIff2(value: boolean): void;
 }
 
 /**
@@ -2754,6 +2756,1368 @@ export function z80CpuEngine(
     }
   ];
 
+  /**
+   * Defines the processing of extended instructions
+   */
+  const extendedOperations: Z80Operation[] = [
+    // 0x00: ---
+    null,
+
+    // 0x01: ---
+    null,
+
+    // 0x02: ---
+    null,
+
+    // 0x03: ---
+    null,
+
+    // 0x04: ---
+    null,
+
+    // 0x05: ---
+    null,
+
+    // 0x06: ---
+    null,
+
+    // 0x07: ---
+    null,
+
+    // 0x08: ---
+    null,
+
+    // 0x09: ---
+    null,
+
+    // 0x0a: ---
+    null,
+
+    // 0x0b: ---
+    null,
+
+    // 0x0c: ---
+    null,
+
+    // 0x0d: ---
+    null,
+
+    // 0x0e: ---
+    null,
+
+    // 0x0f: ---
+    null,
+
+    // 0x10: ---
+    null,
+
+    // 0x11: ---
+    null,
+
+    // 0x12: ---
+    null,
+
+    // 0x13: ---
+    null,
+
+    // 0x14: ---
+    null,
+
+    // 0x15: ---
+    null,
+
+    // 0x16: ---
+    null,
+
+    // 0x17: ---
+    null,
+
+    // 0x18: ---
+    null,
+
+    // 0x19: ---
+    null,
+
+    // 0x1a: ---
+    null,
+
+    // 0x1b: ---
+    null,
+
+    // 0x1c: ---
+    null,
+
+    // 0x1d: ---
+    null,
+
+    // 0x1e: ---
+    null,
+
+    // 0x1f: ---
+    null,
+
+    // 0x20: ---
+    null,
+
+    // 0x21: ---
+    null,
+
+    // 0x22: ---
+    null,
+
+    // 0x23: SWAPNIB
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      a = ((a >> 4) | (a << 4)) & 0xff;
+      af = (a << 8) | f;
+    },
+
+    // 0x24: MIRRA
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      a = mirrorTable[a];
+      af = (a << 8) | f;
+    },
+
+    // 0x25: ---
+    null,
+
+    // 0x26: ---
+    null,
+
+    // 0x27: TESTN
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      const value = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      const result = a & value;
+      f = aluLogOpFlags[result] | FlagsSetMask.H;
+      af = (a << 8) | f;
+    },
+
+    // 0x28: BSLA DE,B
+    null,
+
+    // 0x29: BSRA DE,B
+    null,
+
+    // 0x2a: BSRL DE,B
+    null,
+
+    // 0x2b: BSRF DE,B
+    null,
+
+    // 0x2c: BRLC DE,B
+    null,
+
+    // 0x2d: ---
+    null,
+
+    // 0x2e: ---
+    null,
+
+    // 0x2f: ---
+    null,
+
+    // 0x30: MUL
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      de = d * e;
+    },
+
+    // 0x31: ADD HL,A
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      hl += a;
+      h = hl >> 8;
+      l = hl & 0xff;
+    },
+
+    // 0x32: ADD DE,A
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      de += a;
+      d = de >> 8;
+      e = de & 0xff;
+    },
+
+    // 0x33: ADD BC,A
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      bc += a;
+      b = bc >> 8;
+      c = bc & 0xff;
+    },
+
+    // 0x34: ADD HL,NNNN
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      let value = memory.read(pc);
+      tacts += 4;
+      pc = (pc + 1) & 0xffff;
+      value += memory.read(pc) << 8;
+      tacts += 4;
+      pc = (pc + 1) & 0xffff;
+      hl = (hl + value) & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+    },
+
+    // 0x35: ADD DE,NNNN
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      let value = memory.read(pc);
+      tacts += 4;
+      pc = (pc + 1) & 0xffff;
+      value += memory.read(pc) << 8;
+      tacts += 4;
+      pc = (pc + 1) & 0xffff;
+      de = (de + value) & 0xffff;
+      d = de >> 8;
+      e = de & 0xff;
+    },
+
+    // 0x36: ADD BC,NNNN
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      let value = memory.read(pc);
+      tacts += 4;
+      pc = (pc + 1) & 0xffff;
+      value += memory.read(pc) << 8;
+      tacts += 4;
+      pc = (pc + 1) & 0xffff;
+      bc = (bc + value) & 0xffff;
+      b = bc >> 8;
+      c = bc & 0xff;
+    },
+
+    // 0x37: ---
+    null,
+
+    // 0x38: ---
+    null,
+
+    // 0x39: ---
+    null,
+
+    // 0x3a: ---
+    null,
+
+    // 0x3b: ---
+    null,
+
+    // 0x3c: ---
+    null,
+
+    // 0x3d: ---
+    null,
+
+    // 0x3e: ---
+    null,
+
+    // 0x3f: ---
+    null,
+
+    // 0x40: IN B,(C)
+    () => {
+      wz = (bc + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const pval = portInterface.readPort(bc);
+      b = pval;
+      bc = (b << 8) | c;
+      f = aluLogOpFlags[pval] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
+
+    // 0x41: OUT (C),B
+    () => {
+      wz = (bc + 1) & 0xff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      portInterface.writePort(bc, b);
+    },
+
+    // 0x42: SBC HL,BC
+    () => {
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const cfVal = (f & FlagsSetMask.C) !== 0 ? 1 : 0;
+      let flags = FlagsSetMask.N;
+      const reg = bc;
+      flags |= (((hl & 0x0fff) - (reg & 0x0fff) - cfVal) >> 8) & FlagsSetMask.H;
+      let sbcVal = (hl & 0xffff) - (reg & 0xffff) - cfVal;
+      if ((sbcVal & 0x10000) !== 0) {
+        flags |= FlagsSetMask.C;
+      }
+      if ((sbcVal & 0xffff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      var signedSbc = toSshort(hl) - toSshort(reg) - cfVal;
+      if (signedSbc < -0x8000 || signedSbc >= 0x8000) {
+        flags |= FlagsSetMask.PV;
+      }
+      hl = sbcVal & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      f = flags | (h & (FlagsSetMask.S | FlagsSetMask.R3 | FlagsSetMask.R5));
+      af = (a << 8) | f;
+      tacts += 7;
+    },
+
+    // 0x43: LD (NNNN),BC
+    () => {
+      const low = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      let addr = (memory.read(pc) << 8) | low;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      memory.write(addr, c);
+      tacts += 3;
+      memory.write(wz, b);
+      tacts += 3;
+    },
+
+    // 0x44: NEG
+    neg,
+
+    // 0x45: RETN
+    retn,
+
+    // 0x46: IM 0
+    () => {
+      interruptMode = 0;
+    },
+
+    // 0x47: LD I,A
+    () => {
+      i = a;
+      tacts++;
+    },
+
+    // 0x48: IN (C),C
+    () => {
+      wz = (bc + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const pval = portInterface.readPort(bc);
+      c = pval;
+      bc = (b << 8) | c;
+      f = aluLogOpFlags[pval] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
+
+    // 0x49: OUT (C),C
+    () => {
+      wz = (bc + 1) & 0xff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      portInterface.writePort(bc, c);
+    },
+
+    // 0x4a: ADC HL,BC
+    () => {
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const cfVal = (f & FlagsSetMask.C) !== 0 ? 1 : 0;
+      const qq = bc;
+      let flags =
+        (((hl & 0x0fff) + (qq & 0x0fff) + (f & FlagsSetMask.C)) >> 8) &
+        FlagsSetMask.H &
+        0xff;
+      const adcVal = (hl & 0xffff) + (qq & 0xffff) + cfVal;
+      if ((adcVal & 0x10000) !== 0) {
+        flags |= FlagsSetMask.C;
+      }
+      if ((adcVal & 0xffff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      const signedAdc = toSshort(hl) + toSshort(qq) + cfVal;
+      if (signedAdc < -0x8000 || signedAdc >= 0x8000) {
+        flags |= FlagsSetMask.PV;
+      }
+      hl = adcVal & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      f = flags | (h & (FlagsSetMask.S | FlagsSetMask.R3 | FlagsSetMask.R5));
+      af = (a << 8) | f;
+      tacts += 7;
+    },
+
+    // 0x4b: LD BC,(NNNN)
+    () => {
+      const addrl = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      const addr = (memory.read(pc) << 8) | addrl;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      c = memory.read(addr);
+      tacts += 3;
+      b = memory.read(wz);
+      tacts += 3;
+      bc = (b << 8) | c;
+    },
+
+    // 0x4c: NEG
+    neg,
+
+    // 0x4d: RETI
+    retn,
+
+    // 0x4e: IM 0/1
+    () => {
+      interruptMode = 0;
+    },
+
+    // 0x4f: LD R,A
+    () => {
+      r = a;
+      tacts++;
+    },
+
+    // 0x50: IN D,(C)
+    () => {
+      wz = (bc + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const pval = portInterface.readPort(bc);
+      d = pval;
+      de = (d << 8) | e;
+      f = aluLogOpFlags[pval] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
+
+    // 0x51: OUT (C),D
+    () => {
+      wz = (bc + 1) & 0xff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      portInterface.writePort(bc, d);
+    },
+
+    // 0x52: SBC HL,DE
+    () => {
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const cfVal = (f & FlagsSetMask.C) !== 0 ? 1 : 0;
+      let flags = FlagsSetMask.N;
+      const reg = de;
+      flags |= (((hl & 0x0fff) - (reg & 0x0fff) - cfVal) >> 8) & FlagsSetMask.H;
+      let sbcVal = (hl & 0xffff) - (reg & 0xffff) - cfVal;
+      if ((sbcVal & 0x10000) !== 0) {
+        flags |= FlagsSetMask.C;
+      }
+      if ((sbcVal & 0xffff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      var signedSbc = toSshort(hl) - toSshort(reg) - cfVal;
+      if (signedSbc < -0x8000 || signedSbc >= 0x8000) {
+        flags |= FlagsSetMask.PV;
+      }
+      hl = sbcVal & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      f = flags | (h & (FlagsSetMask.S | FlagsSetMask.R3 | FlagsSetMask.R5));
+      af = (a << 8) | f;
+      tacts += 7;
+    },
+
+    // 0x53: LD (NNNN),DE
+    () => {
+      const low = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      let addr = (memory.read(pc) << 8) | low;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      memory.write(addr, e);
+      tacts += 3;
+      memory.write(wz, d);
+      tacts += 3;
+    },
+
+    // 0x54: NEG
+    neg,
+
+    // 0x55: RETN
+    retn,
+
+    // 0x56: IM 1
+    () => {
+      interruptMode = 1;
+    },
+
+    // 0x57: LD A,I
+    () => {
+      a = i;
+      const flags =
+        (f & FlagsSetMask.C) |
+        (i & FlagsSetMask.R3R5) |
+        (iff2 ? FlagsSetMask.PV : 0) |
+        (i & 0x80) |
+        (i === 0 ? FlagsSetMask.Z : 0);
+      f = flags;
+      af = (a << 8) | f;
+      tacts++;
+    },
+
+    // 0x58: IN E,(C)
+    () => {
+      wz = (bc + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const pval = portInterface.readPort(bc);
+      e = pval;
+      de = (d << 8) | e;
+      f = aluLogOpFlags[pval] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
+
+    // 0x59: OUT (C),E
+    () => {
+      wz = (bc + 1) & 0xff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      portInterface.writePort(bc, e);
+    },
+
+    // 0x5a: ADC HL,DE
+    () => {
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const cfVal = (f & FlagsSetMask.C) !== 0 ? 1 : 0;
+      const qq = de;
+      let flags =
+        (((hl & 0x0fff) + (qq & 0x0fff) + (f & FlagsSetMask.C)) >> 8) &
+        FlagsSetMask.H &
+        0xff;
+      const adcVal = (hl & 0xffff) + (qq & 0xffff) + cfVal;
+      if ((adcVal & 0x10000) !== 0) {
+        flags |= FlagsSetMask.C;
+      }
+      if ((adcVal & 0xffff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      const signedAdc = toSshort(hl) + toSshort(qq) + cfVal;
+      if (signedAdc < -0x8000 || signedAdc >= 0x8000) {
+        flags |= FlagsSetMask.PV;
+      }
+      hl = adcVal & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      f = flags | (h & (FlagsSetMask.S | FlagsSetMask.R3 | FlagsSetMask.R5));
+      af = (a << 8) | f;
+      tacts += 7;
+    },
+
+    // 0x5b: LD DE,(NNNN)
+    () => {
+      const addrl = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      const addr = (memory.read(pc) << 8) | addrl;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      e = memory.read(addr);
+      tacts += 3;
+      d = memory.read(wz);
+      tacts += 3;
+      de = (d << 8) | e;
+    },
+
+    // 0x5c: NEG
+    neg,
+
+    // 0x5d: RETN
+    retn,
+
+    // 0x5e: IM 2
+    () => {
+      interruptMode = 2;
+    },
+
+    // 0x5f: LD A,R
+    () => {
+      a = r;
+      const flags =
+        (f & FlagsSetMask.C) |
+        (r & FlagsSetMask.R3R5) |
+        (iff2 ? FlagsSetMask.PV : 0) |
+        (r & 0x80) |
+        (r === 0 ? FlagsSetMask.Z : 0);
+      f = flags;
+      af = (a << 8) | f;
+      tacts++;
+    },
+
+    // 0x60: IN H,(C)
+    () => {
+      wz = (bc + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const pval = portInterface.readPort(bc);
+      h = pval;
+      hl = (h << 8) | l;
+      f = aluLogOpFlags[pval] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
+
+    // 0x61: OUT (C),H
+    () => {
+      wz = (bc + 1) & 0xff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      portInterface.writePort(bc, h);
+    },
+
+    // 0x62: SBC HL,HL
+    () => {
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const cfVal = (f & FlagsSetMask.C) !== 0 ? 1 : 0;
+      let flags = FlagsSetMask.N;
+      const reg = hl;
+      flags |= (((hl & 0x0fff) - (reg & 0x0fff) - cfVal) >> 8) & FlagsSetMask.H;
+      let sbcVal = (hl & 0xffff) - (reg & 0xffff) - cfVal;
+      if ((sbcVal & 0x10000) !== 0) {
+        flags |= FlagsSetMask.C;
+      }
+      if ((sbcVal & 0xffff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      var signedSbc = toSshort(hl) - toSshort(reg) - cfVal;
+      if (signedSbc < -0x8000 || signedSbc >= 0x8000) {
+        flags |= FlagsSetMask.PV;
+      }
+      hl = sbcVal & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      f = flags | (h & (FlagsSetMask.S | FlagsSetMask.R3 | FlagsSetMask.R5));
+      af = (a << 8) | f;
+      tacts += 7;
+    },
+
+    // 0x63: LD (NNNN),HL
+    () => {
+      const low = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      let addr = (memory.read(pc) << 8) | low;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      memory.write(addr, l);
+      tacts += 3;
+      memory.write(wz, h);
+      tacts += 3;
+    },
+
+    // 0x64: NEG
+    neg,
+
+    // 0x65: RETN
+    retn,
+
+    // 0x66: IM 0
+    () => {
+      interruptMode = 0;
+    },
+
+    // 0x67: RRD
+    () => {
+      const tmp = memory.read(hl);
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 4;
+      } else {
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+      }
+
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 1;
+      wzl = wz & 0xff;
+      memory.write(hl, ((a << 4) | (tmp >> 4)) & 0xff);
+      tacts += 3;
+
+      a = (a & 0xf0) | (tmp & 0x0f);
+      f = aluLogOpFlags[a] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
+
+    // 0x68: IN L,(C)
+    () => {
+      wz = (bc + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const pval = portInterface.readPort(bc);
+      l = pval;
+      hl = (h << 8) | l;
+      f = aluLogOpFlags[pval] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
+
+    // 0x69: OUT (C),L
+    () => {
+      wz = (bc + 1) & 0xff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      portInterface.writePort(bc, l);
+    },
+
+    // 0x6a: ADC HL,HL
+    () => {
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const cfVal = (f & FlagsSetMask.C) !== 0 ? 1 : 0;
+      const qq = hl;
+      let flags =
+        (((hl & 0x0fff) + (qq & 0x0fff) + (f & FlagsSetMask.C)) >> 8) &
+        FlagsSetMask.H &
+        0xff;
+      const adcVal = (hl & 0xffff) + (qq & 0xffff) + cfVal;
+      if ((adcVal & 0x10000) !== 0) {
+        flags |= FlagsSetMask.C;
+      }
+      if ((adcVal & 0xffff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      const signedAdc = toSshort(hl) + toSshort(qq) + cfVal;
+      if (signedAdc < -0x8000 || signedAdc >= 0x8000) {
+        flags |= FlagsSetMask.PV;
+      }
+      hl = adcVal & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      f = flags | (h & (FlagsSetMask.S | FlagsSetMask.R3 | FlagsSetMask.R5));
+      af = (a << 8) | f;
+      tacts += 7;
+    },
+
+    // 0x6b: LD HL,(NNNN)
+    () => {
+      const addrl = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      const addr = (memory.read(pc) << 8) | addrl;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      l = memory.read(addr);
+      tacts += 3;
+      h = memory.read(wz);
+      tacts += 3;
+      hl = (h << 8) | l;
+    },
+
+    // 0x6c: NEG
+    neg,
+
+    // 0x6d: RETN
+    retn,
+
+    // 0x6e: IM 0/1
+    () => {
+      interruptMode = 0;
+    },
+
+    // 0x6f: RLD
+    null,
+
+    // 0x70: IN (C)
+    () => {
+      wz = (bc + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const pval = portInterface.readPort(bc);
+      f = aluLogOpFlags[pval] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
+
+    // 0x71: OUT (C),0
+    () => {
+      wz = (bc + 1) & 0xff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      portInterface.writePort(bc, 0);
+    },
+
+    // 0x72: SBC HL,SP
+    () => {
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const cfVal = (f & FlagsSetMask.C) !== 0 ? 1 : 0;
+      let flags = FlagsSetMask.N;
+      const reg = sp;
+      flags |= (((hl & 0x0fff) - (reg & 0x0fff) - cfVal) >> 8) & FlagsSetMask.H;
+      let sbcVal = (hl & 0xffff) - (reg & 0xffff) - cfVal;
+      if ((sbcVal & 0x10000) !== 0) {
+        flags |= FlagsSetMask.C;
+      }
+      if ((sbcVal & 0xffff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      var signedSbc = toSshort(hl) - toSshort(reg) - cfVal;
+      if (signedSbc < -0x8000 || signedSbc >= 0x8000) {
+        flags |= FlagsSetMask.PV;
+      }
+      hl = sbcVal & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      f = flags | (h & (FlagsSetMask.S | FlagsSetMask.R3 | FlagsSetMask.R5));
+      af = (a << 8) | f;
+      tacts += 7;
+    },
+
+    // 0x73: LD (NNNN),SP
+    () => {
+      const low = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      let addr = (memory.read(pc) << 8) | low;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      memory.write(addr, sp & 0xff);
+      tacts += 3;
+      memory.write(wz, sp >> 8);
+      tacts += 3;
+    },
+
+    // 0x74: NEG
+    neg,
+
+    // 0x75: RETN
+    retn,
+
+    // 0x76: IM 1
+    () => {
+      interruptMode = 1;
+    },
+
+    // 0x77: ---
+    null,
+
+    // 0x78: IN A,(C)
+    () => {
+      wz = (bc + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const pval = portInterface.readPort(bc);
+      a = pval;
+      f = aluLogOpFlags[pval] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
+
+    // 0x79: OUT (C),A
+    () => {
+      wz = (bc + 1) & 0xff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      portInterface.writePort(bc, a);
+    },
+
+    // 0x7a: ADC HL,SP
+    () => {
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const cfVal = (f & FlagsSetMask.C) !== 0 ? 1 : 0;
+      const qq = sp;
+      let flags =
+        (((hl & 0x0fff) + (qq & 0x0fff) + (f & FlagsSetMask.C)) >> 8) &
+        FlagsSetMask.H &
+        0xff;
+      const adcVal = (hl & 0xffff) + (qq & 0xffff) + cfVal;
+      if ((adcVal & 0x10000) !== 0) {
+        flags |= FlagsSetMask.C;
+      }
+      if ((adcVal & 0xffff) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      const signedAdc = toSshort(hl) + toSshort(qq) + cfVal;
+      if (signedAdc < -0x8000 || signedAdc >= 0x8000) {
+        flags |= FlagsSetMask.PV;
+      }
+      hl = adcVal & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      f = flags | (h & (FlagsSetMask.S | FlagsSetMask.R3 | FlagsSetMask.R5));
+      af = (a << 8) | f;
+      tacts += 7;
+    },
+
+    // 0x7b: LD SP,(NNNN)
+    () => {
+      const addrl = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      const addr = (memory.read(pc) << 8) | addrl;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      wz = (addr + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      const low = memory.read(addr);
+      tacts += 3;
+      const high = memory.read(wz);
+      tacts += 3;
+      sp = (high << 8) | low;
+    },
+
+    // 0x7c: NEG
+    neg,
+
+    // 0x7d: RETN
+    retn,
+
+    // 0x7e: IM 2
+    () => {
+      interruptMode = 2;
+    },
+
+    // 0x7f: ---
+    null,
+
+    // 0x80: ---
+    null,
+
+    // 0x81: ---
+    null,
+
+    // 0x82: ---
+    null,
+
+    // 0x83: ---
+    null,
+
+    // 0x84: ---
+    null,
+
+    // 0x85: ---
+    null,
+
+    // 0x86: ---
+    null,
+
+    // 0x87: ---
+    null,
+
+    // 0x88: ---
+    null,
+
+    // 0x89: ---
+    null,
+
+    // 0x8a: PUSH NNNN
+    null,
+
+    // 0x8b: ---
+    null,
+
+    // 0x8c: ---
+    null,
+
+    // 0x8d: ---
+    null,
+
+    // 0x8e: ---
+    null,
+
+    // 0x8f: ---
+    null,
+
+    // 0x90: OUTINB
+    null,
+
+    // 0x91: NEXTREG R,NN
+    null,
+
+    // 0x92: NEXTREG R,A
+    null,
+
+    // 0x93: PIXELDN
+    null,
+
+    // 0x94: PIXELAD
+    null,
+
+    // 0x95: SETAE
+    null,
+
+    // 0x96: ---
+    null,
+
+    // 0x97: ---
+    null,
+
+    // 0x98: JP (C)
+    null,
+
+    // 0x99: ---
+    null,
+
+    // 0x9a: ---
+    null,
+
+    // 0x9b: ---
+    null,
+
+    // 0x9c: ---
+    null,
+
+    // 0x9d: ---
+    null,
+
+    // 0x9e: ---
+    null,
+
+    // 0x9f: ---
+    null,
+
+    // 0xa0: LDI
+    null,
+
+    // 0xa1: CPI
+    null,
+
+    // 0xa2: INI
+    null,
+
+    // 0xa3: OUTI
+    null,
+
+    // 0xa4: LDIX
+    null,
+
+    // 0xa5: LDWS
+    null,
+
+    // 0xa6: ---
+    null,
+
+    // 0xa7: ---
+    null,
+
+    // 0xa8: LDD
+    null,
+
+    // 0xa9: CPD
+    null,
+
+    // 0xaa: IND
+    null,
+
+    // 0xab: OUTD
+    null,
+
+    // 0xac: LDDX
+    null,
+
+    // 0xad: ---
+    null,
+
+    // 0xae: ---
+    null,
+
+    // 0xaf: ---
+    null,
+
+    // 0xb0: LDIR
+    null,
+
+    // 0xb1: CPIR
+    null,
+
+    // 0xb2: INIR
+    null,
+
+    // 0xb3: OTIR
+    null,
+
+    // 0xb4: LDIRX
+    null,
+
+    // 0xb5: ---
+    null,
+
+    // 0xb6: ---
+    null,
+
+    // 0xb7: LDPIRX
+    null,
+
+    // 0xb8: LDDR
+    null,
+
+    // 0xb9: CPDR
+    null,
+
+    // 0xba: INIR
+    null,
+
+    // 0xbb: OTIR
+    null,
+
+    // 0xbc: LDDRX
+    null,
+
+    // 0xbd: ---
+    null,
+
+    // 0xbe: ---
+    null,
+
+    // 0xbf: ---
+    null,
+
+    // 0xc0: ---
+    null,
+
+    // 0xc1: ---
+    null,
+
+    // 0xc2: ---
+    null,
+
+    // 0xc3: ---
+    null,
+
+    // 0xc4: ---
+    null,
+
+    // 0xc5: ---
+    null,
+
+    // 0xc6: ---
+    null,
+
+    // 0xc7: ---
+    null,
+
+    // 0xc8: ---
+    null,
+
+    // 0xc9: ---
+    null,
+
+    // 0xca: ---
+    null,
+
+    // 0xcb: ---
+    null,
+
+    // 0xcc: ---
+    null,
+
+    // 0xcd: ---
+    null,
+
+    // 0xce: ---
+    null,
+
+    // 0xcf: ---
+    null,
+
+    // 0xd0: ---
+    null,
+
+    // 0xd1: ---
+    null,
+
+    // 0xd2: ---
+    null,
+
+    // 0xd3: ---
+    null,
+
+    // 0xd4: ---
+    null,
+
+    // 0xd5: ---
+    null,
+
+    // 0xd6: ---
+    null,
+
+    // 0xd7: ---
+    null,
+
+    // 0xd8: ---
+    null,
+
+    // 0xd9: ---
+    null,
+
+    // 0xda: ---
+    null,
+
+    // 0xdb: ---
+    null,
+
+    // 0xdc: ---
+    null,
+
+    // 0xdd: ---
+    null,
+
+    // 0xde: ---
+    null,
+
+    // 0xdf: ---
+    null,
+
+    // 0xe0: ---
+    null,
+
+    // 0xe1: ---
+    null,
+
+    // 0xe2: ---
+    null,
+
+    // 0xe3: ---
+    null,
+
+    // 0xe4: ---
+    null,
+
+    // 0xe5: ---
+    null,
+
+    // 0xe6: ---
+    null,
+
+    // 0xe7: ---
+    null,
+
+    // 0xe8: ---
+    null,
+
+    // 0xe9: ---
+    null,
+
+    // 0xea: ---
+    null,
+
+    // 0xeb: ---
+    null,
+
+    // 0xec: ---
+    null,
+
+    // 0xed: ---
+    null,
+
+    // 0xee: ---
+    null,
+
+    // 0xef: ---
+    null,
+
+    // 0xf0: ---
+    null,
+
+    // 0xf1: ---
+    null,
+
+    // 0xf2: ---
+    null,
+
+    // 0xf3: ---
+    null,
+
+    // 0xf4: ---
+    null,
+
+    // 0xf5: ---
+    null,
+
+    // 0xf6: ---
+    null,
+
+    // 0xf7: ---
+    null,
+
+    // 0xf8: ---
+    null,
+
+    // 0xf9: ---
+    null,
+
+    // 0xfa: ---
+    null,
+
+    // 0xfb: ---
+    null,
+
+    // 0xfc: ---
+    null,
+
+    // 0xfd: ---
+    null,
+
+    // 0xfe: ---
+    null,
+
+    // 0xff: ---
+    null
+  ];
+
   const indexedOperations: (Z80Operation | number)[] = [
     // 0x00: NOP
     null,
@@ -4775,6 +6139,12 @@ export function z80CpuEngine(
         wz = value & 0xffff;
         wzh = wz >> 8;
         wzl = wz & 0xff;
+      },
+      setIff1(value: boolean): void {
+        iff1 = value;
+      },
+      setIff2(value: boolean): void {
+        iff2 = value;
       }
     };
   }
@@ -4997,6 +6367,52 @@ export function z80CpuEngine(
   }
 
   // ==========================================================================
+  // Instruction functions
+
+  /**
+   * NEG instruction
+   */
+  function neg(): void {
+    const result = -a;
+    const lNibble = -(a & 0x0f) & 0x10;
+
+    let flags = result & (FlagsSetMask.S | FlagsSetMask.R5 | FlagsSetMask.R3);
+    flags |= FlagsSetMask.N;
+    if ((result & 0xff) === 0) {
+      flags |= FlagsSetMask.Z;
+    }
+    if (a !== 0) {
+      flags |= FlagsSetMask.C;
+    }
+    if (lNibble !== 0) {
+      flags |= FlagsSetMask.H;
+    }
+    if (a === 0x80) {
+      flags |= FlagsSetMask.PV;
+    }
+    f = flags;
+    a = result & 0xff;
+    af = (a << 8) | f;
+  }
+
+  /**
+   * RETN (RETI) instruction
+   */
+  function retn(): void {
+    iff1 = iff2;
+    let addr = memory.read(sp);
+    tacts += 3;
+    sp = (sp + 1) & 0xfff;
+    addr += memory.read(sp) * 0x100;
+    tacts += 3;
+    sp = (sp + 1) & 0xfff;
+    pc = addr;
+    wz = addr;
+    wzh = wz >> 8;
+    wzl = wz & 0xff;
+  }
+
+  // ==========================================================================
   // ALU helper functions
   //
   /**
@@ -5079,7 +6495,8 @@ export function z80CpuEngine(
    * Process Z80 opcodes with ED prefix
    */
   function processEDOperations(): void {
-    // TODO: Implement this method
+    const opMethod = extendedOperations[lastFethcedOpCode];
+    if (opMethod) opMethod();
   }
 
   /**
@@ -5718,4 +7135,17 @@ const rorOpResults = [];
 for (let b = 0; b < 0x100; b++) {
   rolOpResults[b] = ((b << 1) + (b >> 7)) & 0xff;
   rorOpResults[b] = ((b >> 1) + (b << 7)) & 0xff;
+}
+
+// --- Initialize mirror table
+const mirrorTable = [];
+for (let b = 0; b < 0x100; b++) {
+  let orig = b;
+  let mirrored = 0;
+  for (let i = 0; i < 8; i++) {
+    mirrored <<= 1;
+    mirrored |= orig & 0x01;
+    orig >>= 1;
+  }
+  mirrorTable[b] = mirrored;
 }
