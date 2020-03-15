@@ -214,7 +214,7 @@ export function z80CpuEngine(
    */
   const standardOperations: Z80Operation[] = [
     // 0x00: NOP
-    () => {},
+    () => { },
 
     // 0x01: LD BC,NNNN
     () => {
@@ -3573,7 +3573,34 @@ export function z80CpuEngine(
     },
 
     // 0x6f: RLD
-    null,
+    () => {
+      const tmp = memory.read(hl);
+      tacts += 3;
+
+      if (useGateArrayContention) {
+        tacts += 4;
+      }
+      else {
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+      }
+
+      wz = (hl + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+      memory.write(hl, ((a & 0x0F) | (tmp << 4)) & 0xFF);
+      tacts += 3;
+
+      a = (a & 0xF0) | (tmp >> 4);
+      f = aluLogOpFlags[a] | (f & FlagsSetMask.C);
+      af = (a << 8) | f;
+    },
 
     // 0x70: IN (C)
     () => {
@@ -3764,7 +3791,23 @@ export function z80CpuEngine(
     null,
 
     // 0x8a: PUSH NNNN
-    null,
+    () => {
+      if (!allowExtendedInstructionSet) {
+        return;
+      }
+      let value = memory.read(pc);
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      value += memory.read(pc) << 8;
+      tacts += 3;
+      pc = (pc + 1) & 0xffff;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, value >> 8);
+      tacts += 3;
+      sp = (sp - 1) & 0xffff;
+      memory.write(sp, value & 0xff);
+      tacts += 3;
+    },
 
     // 0x8b: ---
     null,
@@ -3830,10 +3873,86 @@ export function z80CpuEngine(
     null,
 
     // 0xa0: LDI
-    null,
+    () => {
+      let memVal = memory.read(hl);
+      hl = (hl + 1) & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      tacts += 3;
+      memory.write(de, memVal);
+      if (useGateArrayContention) {
+        tacts += 5;
+      }
+      else {
+        tacts += 3;
+        memory.write(de, memVal);
+        tacts++;
+        memory.write(de, memVal);
+        tacts++;
+      }
+      de = (de + 1) & 0xffff;
+      d = de >> 8;
+      e = de & 0xff;
+      memVal += a;
+      memVal = ((memVal & FlagsSetMask.R3) | ((memVal << 4) & FlagsSetMask.R5)) & 0xFF;
+      f = (f
+        & ~(FlagsSetMask.N | FlagsSetMask.H | FlagsSetMask.PV | FlagsSetMask.R3 | FlagsSetMask.R5)) | memVal;
+      bc = (bc - 1) & 0xffff;
+      b = bc >> 8;
+      c = bc & 0xff;
+      if (bc !== 0) {
+        f |= FlagsSetMask.PV;
+      }
+      af = (a << 8) | f;
+    },
 
     // 0xa1: CPI
-    null,
+    () => {
+      let memVal = memory.read(hl);
+      const compRes = a - memVal;
+      let r3r5 = compRes;
+      let flags = (f & FlagsSetMask.C) | FlagsSetMask.N;
+      if ((((a & 0x0F) - (compRes & 0x0F)) & 0x10) !== 0) {
+        flags |= FlagsSetMask.H;
+        r3r5 = compRes - 1;
+      }
+      if ((compRes & 0xFF) === 0) {
+        flags |= FlagsSetMask.Z;
+      }
+      flags |= compRes & FlagsSetMask.S;
+      flags |= (r3r5 & FlagsSetMask.R3) | ((r3r5 << 4) & FlagsSetMask.R5);
+
+      tacts += 3;
+      if (useGateArrayContention) {
+        tacts += 5;
+      }
+      else {
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+        memory.read(hl);
+        tacts++;
+      }
+      hl = (hl + 1) & 0xffff;
+      h = hl >> 8;
+      l = hl & 0xff;
+      bc = (bc - 1) & 0xffff;
+      b = bc >> 8;
+      c = bc & 0xff;
+      if (bc !== 0) {
+        flags |= FlagsSetMask.PV;
+      }
+      f = flags;
+      af = (a << 8) | f;
+      wz = (wz + 1) & 0xffff;
+      wzh = wz >> 8;
+      wzl = wz & 0xff;
+    },
 
     // 0xa2: INI
     null,
