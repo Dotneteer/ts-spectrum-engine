@@ -34,7 +34,7 @@
     "javascript-obfuscator": "^0.18.1",
     "mocha": "^7.1.0",
     "rimraf": "^3.0.0",
-    "shelljs": "^0.8.3",
+    "shelljs": "^0.8.5",
     "spawn-command": "0.0.2-1",
     "ts-mocha": "^6.0.0",
     "typescript": "^3.8.3"
